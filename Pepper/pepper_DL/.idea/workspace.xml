@@ -1,0 +1,512 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="be960dc2-6cea-4ed1-a7f9-9b11096d53b8" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/client2.py" beforeDir="false" afterPath="$PROJECT_DIR$/client/client2.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/config.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/client/config.yaml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/exp_logs/occlusion_log.csv" beforeDir="false" afterPath="$PROJECT_DIR$/client/exp_logs/occlusion_log.csv" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/experiments.py" beforeDir="false" afterPath="$PROJECT_DIR$/client/experiments.py" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Python Script" />
+      </list>
+    </option>
+  </component>
+  <component name="FlaskConsoleOptions" custom-start-script="import sys&#10;sys.path.extend([WORKING_DIR_AND_PYTHON_PATHS])&#10;from flask.cli import ScriptInfo&#10;locals().update(ScriptInfo(create_app=None).load_app().make_shell_context())&#10;print(&quot;Python %s on %s\nApp: %s [%s]\nInstance: %s&quot; % (sys.version, sys.platform, app.import_name, app.env, app.instance_path))">
+    <envs>
+      <env key="FLASK_APP" value="app" />
+    </envs>
+    <option name="myCustomStartScript" value="import sys&#10;sys.path.extend([WORKING_DIR_AND_PYTHON_PATHS])&#10;from flask.cli import ScriptInfo&#10;locals().update(ScriptInfo(create_app=None).load_app().make_shell_context())&#10;print(&quot;Python %s on %s\nApp: %s [%s]\nInstance: %s&quot; % (sys.version, sys.platform, app.import_name, app.env, app.instance_path))" />
+    <option name="myEnvs">
+      <map>
+        <entry key="FLASK_APP" value="app" />
+      </map>
+    </option>
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="HighlightingSettingsPerFile">
+    <setting file="file://$USER_HOME$/anaconda3/envs/ml/lib/python3.7/site-packages/torch/cuda/__init__.py" root0="SKIP_INSPECTION" />
+    <setting file="file://$USER_HOME$/anaconda3/envs/ml/lib/python3.7/site-packages/torch/nn/modules/module.py" root0="SKIP_INSPECTION" />
+    <setting file="file://$USER_HOME$/anaconda3/envs/pepper/lib/python2.7/socket.py" root0="SKIP_INSPECTION" />
+  </component>
+  <component name="MarkdownSettingsMigration">
+    <option name="stateVersion" value="1" />
+  </component>
+  <component name="ProjectId" id="2MnmcuXzkSs0QbI1x2dQZFnq6ke" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "RunOnceActivity.OpenProjectViewOnStart": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "TODO_SCOPE": "All Places",
+    "WebServerToolWindowFactoryState": "false",
+    "git-widget-placeholder": "pepper__flask",
+    "last_opened_file_path": "/mnt/SSD4TB/GoogleDrive/code/pepper_DL/client/exp_logs",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "vue.rearranger.settings.migration": "true"
+  }
+}]]></component>
+  <component name="PyConsoleOptionsProvider">
+    <option name="myPythonConsoleState">
+      <console-settings>
+        <option name="useSoftWraps" value="true" />
+      </console-settings>
+    </option>
+  </component>
+  <component name="RdControllerToolWindowsLayoutState" isNewUi="false">
+    <layout>
+      <window_info id="Commit_Guest" />
+      <window_info id="Space Code Reviews" order="0" />
+      <window_info id="Bookmarks" order="1" side_tool="true" />
+      <window_info id="Pull Requests" order="2" weight="0.32994792" />
+      <window_info active="true" content_ui="combo" id="Project" order="3" visible="true" weight="0.14140625" />
+      <window_info id="Commit" order="4" />
+      <window_info id="Learn" order="5" show_stripe_button="false" />
+      <window_info id="Structure" order="6" side_tool="true" />
+      <window_info anchor="bottom" id="Find" show_stripe_button="false" weight="0.33028847" />
+      <window_info anchor="bottom" id="Version Control" order="0" weight="0.31490386" />
+      <window_info anchor="bottom" id="Python Packages" order="1" weight="0.33028847" />
+      <window_info anchor="bottom" id="File Transfer" order="2" />
+      <window_info anchor="bottom" id="Database Changes" order="3" />
+      <window_info anchor="bottom" x="22" y="312" width="1876" height="415" id="Python Console" order="4" weight="0.39951923" />
+      <window_info anchor="bottom" id="Problems View" order="5" weight="0.33028847" />
+      <window_info active="true" anchor="bottom" id="Terminal" order="6" visible="true" weight="0.35048077" />
+      <window_info anchor="bottom" id="TypeScript" order="7" />
+      <window_info anchor="bottom" id="Services" order="8" weight="0.33028847" />
+      <window_info anchor="bottom" id="Debug" order="9" show_stripe_button="false" weight="0.33028847" />
+      <window_info anchor="bottom" id="Run" order="10" weight="0.33028847" />
+      <window_info anchor="bottom" id="Dependency Checker" order="11" />
+      <window_info anchor="right" id="Endpoints" />
+      <window_info anchor="right" id="Database" />
+      <window_info anchor="right" id="SciView" weight="0.32994792" />
+      <window_info anchor="right" id="Notifications" side_tool="true" weight="0.32994792" />
+    </layout>
+  </component>
+  <component name="RecentsManager">
+    <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/client/exp_logs" />
+    </key>
+  </component>
+  <component name="RunManager" selected="Python.client2">
+    <configuration name="bot_sort" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="pepper_DL" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="$USER_HOME$/anaconda3/envs/ml/bin/python" />
+      <option name="SDK_NAME" value="ml" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/client/trackers/botsort" />
+      <option name="IS_MODULE_SDK" value="false" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/client/trackers/botsort/bot_sort.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="true" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="client2" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="pepper_DL" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="$USER_HOME$/anaconda3/envs/ml/bin/python" />
+      <option name="SDK_NAME" value="ml" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/client" />
+      <option name="IS_MODULE_SDK" value="false" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/client/client2.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="true" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="experiments" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="pepper_DL" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/client" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/client/experiments.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="server" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="pepper_DL" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/server" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/server/server.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="yolo" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="pepper_DL" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="$USER_HOME$/anaconda3/envs/ml/bin/python" />
+      <option name="SDK_NAME" value="ml" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/client/trackers/detection_models/edgeai_yolov5" />
+      <option name="IS_MODULE_SDK" value="false" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/client/trackers/detection_models/edgeai_yolov5/yolo.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <list>
+      <item itemvalue="Python.experiments" />
+      <item itemvalue="Python.bot_sort" />
+      <item itemvalue="Python.yolo" />
+      <item itemvalue="Python.client2" />
+      <item itemvalue="Python.server" />
+    </list>
+    <recent_temporary>
+      <list>
+        <item itemvalue="Python.experiments" />
+        <item itemvalue="Python.client2" />
+        <item itemvalue="Python.server" />
+        <item itemvalue="Python.bot_sort" />
+        <item itemvalue="Python.yolo" />
+      </list>
+    </recent_temporary>
+  </component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="be960dc2-6cea-4ed1-a7f9-9b11096d53b8" name="Changes" comment="" />
+      <created>1678411803879</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1678411803879</updated>
+      <workItem from="1678411805543" duration="100000" />
+      <workItem from="1678411923351" duration="599000" />
+      <workItem from="1678418341690" duration="23000" />
+      <workItem from="1678750921119" duration="1364000" />
+      <workItem from="1678755455002" duration="596000" />
+      <workItem from="1678841727083" duration="3405000" />
+      <workItem from="1678847868769" duration="388000" />
+      <workItem from="1678848691564" duration="725000" />
+      <workItem from="1678926585152" duration="151000" />
+      <workItem from="1678926923317" duration="80000" />
+      <workItem from="1679013725156" duration="3649000" />
+      <workItem from="1679364999490" duration="1290000" />
+      <workItem from="1679458643294" duration="2903000" />
+      <workItem from="1679629114654" duration="775000" />
+      <workItem from="1679966086861" duration="871000" />
+      <workItem from="1680223518766" duration="599000" />
+      <workItem from="1680229183562" duration="1451000" />
+      <workItem from="1680233521116" duration="651000" />
+      <workItem from="1680486358680" duration="3689000" />
+      <workItem from="1680571945843" duration="1566000" />
+      <workItem from="1680573932601" duration="599000" />
+      <workItem from="1680577949565" duration="660000" />
+      <workItem from="1680665225720" duration="1799000" />
+      <workItem from="1680670284166" duration="1850000" />
+      <workItem from="1680737529308" duration="3352000" />
+      <workItem from="1681174494273" duration="3130000" />
+      <workItem from="1681265670407" duration="599000" />
+      <workItem from="1681267825923" duration="3406000" />
+      <workItem from="1681347864688" duration="1847000" />
+    </task>
+    <task id="LOCAL-00001" summary="Added some test code used to measure camera FPS">
+      <created>1678852794233</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1678852794233</updated>
+    </task>
+    <task id="LOCAL-00002" summary="Added some test code used to measure camera FPS">
+      <created>1678852842183</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1678852842183</updated>
+    </task>
+    <task id="LOCAL-00003" summary="OCSORT + YOLOv5-Pose + CUDA successfully ported to Flask server">
+      <created>1679026248982</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1679026248982</updated>
+    </task>
+    <task id="LOCAL-00004" summary="OCSORT + YOLOv5-Pose + CUDA successfully ported to Flask server&#10;&#10;Also made it possible to shut down the server with a command from client2.py">
+      <created>1679026491665</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1679026491665</updated>
+    </task>
+    <task id="LOCAL-00005" summary="Added:&#10;&#10;- Pepper can now say whatever I want it to say rather than using a dictionary of predefined sentences">
+      <created>1679367392320</created>
+      <option name="number" value="00005" />
+      <option name="presentableId" value="LOCAL-00005" />
+      <option name="project" value="LOCAL" />
+      <updated>1679367392320</updated>
+    </task>
+    <task id="LOCAL-00006" summary="Added:&#10;&#10;- Pepper can now say whatever I want it to say rather than using a dictionary of predefined sentences&#10;&#10;Ported:&#10;&#10;- Every robot action to Flask&#10;- Follow behaviour to Flask">
+      <created>1679377524577</created>
+      <option name="number" value="00006" />
+      <option name="presentableId" value="LOCAL-00006" />
+      <option name="project" value="LOCAL" />
+      <updated>1679377524577</updated>
+    </task>
+    <task id="LOCAL-00007" summary="QoL:&#10;- Added verbose to see what Pepper actions are being called">
+      <created>1679461122025</created>
+      <option name="number" value="00007" />
+      <option name="presentableId" value="LOCAL-00007" />
+      <option name="project" value="LOCAL" />
+      <updated>1679461122025</updated>
+    </task>
+    <task id="LOCAL-00008" summary="QoL:&#10;- Added verbose to see what Pepper actions are being called&#10;&#10;Added:&#10;- Default behaviour when no targets are being tracked. Pepper will spin around at a slow rate while resetting its head angle">
+      <created>1679463685851</created>
+      <option name="number" value="00008" />
+      <option name="presentableId" value="LOCAL-00008" />
+      <option name="project" value="LOCAL" />
+      <updated>1679463685851</updated>
+    </task>
+    <task id="LOCAL-00009" summary="Added:&#10;- Pepper will look for the target if it lost track (depends on framerate)">
+      <created>1679634897302</created>
+      <option name="number" value="00009" />
+      <option name="presentableId" value="LOCAL-00009" />
+      <option name="project" value="LOCAL" />
+      <updated>1679634897302</updated>
+    </task>
+    <task id="LOCAL-00010" summary="Added:&#10;- Start and end condition">
+      <created>1679970165429</created>
+      <option name="number" value="00010" />
+      <option name="presentableId" value="LOCAL-00010" />
+      <option name="project" value="LOCAL" />
+      <updated>1679970165429</updated>
+    </task>
+    <task id="LOCAL-00011" summary="Added:&#10;-Frame threshold to initate tracking after someone has raised their hand for X number of frames.">
+      <created>1680236193439</created>
+      <option name="number" value="00011" />
+      <option name="presentableId" value="LOCAL-00011" />
+      <option name="project" value="LOCAL" />
+      <updated>1680236193439</updated>
+    </task>
+    <task id="LOCAL-00012" summary="Added:&#10;- BoTSORT">
+      <created>1680501766023</created>
+      <option name="number" value="00012" />
+      <option name="presentableId" value="LOCAL-00012" />
+      <option name="project" value="LOCAL" />
+      <updated>1680501766023</updated>
+    </task>
+    <task id="LOCAL-00013" summary="Added:&#10;- BoTSORT">
+      <created>1680501843585</created>
+      <option name="number" value="00013" />
+      <option name="presentableId" value="LOCAL-00013" />
+      <option name="project" value="LOCAL" />
+      <updated>1680501843585</updated>
+    </task>
+    <task id="LOCAL-00014" summary="Fixed:&#10;- Follow behaviour with BoTSORT now works">
+      <created>1680581038420</created>
+      <option name="number" value="00014" />
+      <option name="presentableId" value="LOCAL-00014" />
+      <option name="project" value="LOCAL" />
+      <updated>1680581038420</updated>
+    </task>
+    <task id="LOCAL-00015" summary="Added:&#10;- Follow Behaviour with ByteTrack">
+      <created>1680673051563</created>
+      <option name="number" value="00015" />
+      <option name="presentableId" value="LOCAL-00015" />
+      <option name="project" value="LOCAL" />
+      <updated>1680673051563</updated>
+    </task>
+    <task id="LOCAL-00016" summary="Added:&#10;- Follow Behaviour with ByteTrack&#10;- Code for trial + experiments">
+      <created>1680674082223</created>
+      <option name="number" value="00016" />
+      <option name="presentableId" value="LOCAL-00016" />
+      <option name="project" value="LOCAL" />
+      <updated>1680674082223</updated>
+    </task>
+    <task id="LOCAL-00017" summary="Added:&#10;- Tracking bounding boxes now show different colours based on ID&#10;- Drawing bounding boxes now works with ByteTrack and BoTSORT">
+      <created>1680741991085</created>
+      <option name="number" value="00017" />
+      <option name="presentableId" value="LOCAL-00017" />
+      <option name="project" value="LOCAL" />
+      <updated>1680741991085</updated>
+    </task>
+    <task id="LOCAL-00018" summary="Fixed:&#10;- Code for experiment">
+      <created>1680749748880</created>
+      <option name="number" value="00018" />
+      <option name="presentableId" value="LOCAL-00018" />
+      <option name="project" value="LOCAL" />
+      <updated>1680749748880</updated>
+    </task>
+    <task id="LOCAL-00019" summary="Added:&#10;- Automatic logging for trials">
+      <created>1681188980531</created>
+      <option name="number" value="00019" />
+      <option name="presentableId" value="LOCAL-00019" />
+      <option name="project" value="LOCAL" />
+      <updated>1681188980531</updated>
+    </task>
+    <task id="LOCAL-00020" summary="Added:&#10;- Rewritten some code to make experiments easier to carry out">
+      <created>1681270787461</created>
+      <option name="number" value="00020" />
+      <option name="presentableId" value="LOCAL-00020" />
+      <option name="project" value="LOCAL" />
+      <updated>1681270787461</updated>
+    </task>
+    <task id="LOCAL-00021" summary="Added:&#10;- Results for OCSORT&#10;- Made trackers accumulate counts of frames where the target is missing">
+      <created>1681275224024</created>
+      <option name="number" value="00021" />
+      <option name="presentableId" value="LOCAL-00021" />
+      <option name="project" value="LOCAL" />
+      <updated>1681275224024</updated>
+    </task>
+    <option name="localTasksCounter" value="22" />
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="Added some test code used to measure camera FPS" />
+    <MESSAGE value="OCSORT + YOLOv5-Pose + CUDA successfully ported to Flask server" />
+    <MESSAGE value="OCSORT + YOLOv5-Pose + CUDA successfully ported to Flask server&#10;&#10;Also made it possible to shut down the server with a command from client2.py" />
+    <MESSAGE value="Added:&#10;&#10;- Pepper can now say whatever I want it to say rather than using a dictionary of predefined sentences" />
+    <MESSAGE value="Added:&#10;&#10;- Pepper can now say whatever I want it to say rather than using a dictionary of predefined sentences&#10;&#10;Ported:&#10;&#10;- Every robot action to Flask&#10;- Follow behaviour to Flask" />
+    <MESSAGE value="QoL:&#10;- Added verbose to see what Pepper actions are being called" />
+    <MESSAGE value="QoL:&#10;- Added verbose to see what Pepper actions are being called&#10;&#10;Added:&#10;- Default behaviour when no targets are being tracked. Pepper will spin around at a slow rate while resetting its head angle" />
+    <MESSAGE value="Added:&#10;- Pepper will look for the target if it lost track (depends on framerate)" />
+    <MESSAGE value="Added:&#10;- Start and end condition" />
+    <MESSAGE value="Added:&#10;-Frame threshold to initate tracking after someone has raised their hand for X number of frames." />
+    <MESSAGE value="Added:&#10;- BoTSORT" />
+    <MESSAGE value="Fixed:&#10;- Follow behaviour with BoTSORT now works" />
+    <MESSAGE value="Added:&#10;- Follow Behaviour with ByteTrack" />
+    <MESSAGE value="Added:&#10;- Follow Behaviour with ByteTrack&#10;- Code for trial + experiments" />
+    <MESSAGE value="Added:&#10;- Tracking bounding boxes now show different colours based on ID&#10;- Drawing bounding boxes now works with ByteTrack and BoTSORT" />
+    <MESSAGE value="Fixed:&#10;- Code for experiment" />
+    <MESSAGE value="Added:&#10;- Automatic logging for trials" />
+    <MESSAGE value="Added:&#10;- Rewritten some code to make experiments easier to carry out" />
+    <MESSAGE value="Added:&#10;- Results for OCSORT&#10;- Made trackers accumulate counts of frames where the target is missing" />
+    <option name="LAST_COMMIT_MESSAGE" value="Added:&#10;- Results for OCSORT&#10;- Made trackers accumulate counts of frames where the target is missing" />
+  </component>
+  <component name="XDebuggerManager">
+    <breakpoint-manager>
+      <breakpoints>
+        <line-breakpoint enabled="true" type="python-line">
+          <url>file://$PROJECT_DIR$/client/trackers/ocsort/ocsort.py</url>
+          <line>577</line>
+          <option name="timeStamp" value="2" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="python-line">
+          <url>file://$PROJECT_DIR$/client/trackers/botsort/bot_sort.py</url>
+          <line>705</line>
+          <option name="timeStamp" value="7" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="python-line">
+          <url>file://$PROJECT_DIR$/client/trackers/botsort/bot_sort.py</url>
+          <line>717</line>
+          <option name="timeStamp" value="9" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="python-line">
+          <url>file://$PROJECT_DIR$/client/trackers/botsort/bot_sort.py</url>
+          <line>553</line>
+          <option name="timeStamp" value="11" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="python-line">
+          <url>file://$PROJECT_DIR$/client/trackers/botsort/fast_reid/fastreid/modeling/backbones/resnext.py</url>
+          <line>9</line>
+          <option name="timeStamp" value="12" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="python-line">
+          <url>file://$PROJECT_DIR$/client/trackers/botsort/fast_reid/fastreid/modeling/meta_arch/baseline.py</url>
+          <line>6</line>
+          <option name="timeStamp" value="13" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="python-line">
+          <url>file://$PROJECT_DIR$/client/trackers/botsort/fast_reid/fastreid/data/build.py</url>
+          <line>6</line>
+          <option name="timeStamp" value="14" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="python-line">
+          <url>file://$PROJECT_DIR$/client/experiments.py</url>
+          <line>282</line>
+          <option name="timeStamp" value="19" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="python-line">
+          <url>file://$PROJECT_DIR$/client/experiments.py</url>
+          <line>93</line>
+          <option name="timeStamp" value="20" />
+        </line-breakpoint>
+      </breakpoints>
+    </breakpoint-manager>
+  </component>
+  <component name="com.intellij.coverage.CoverageDataManagerImpl">
+    <SUITE FILE_PATH="coverage/pepper_DL$client.coverage" NAME="client Coverage Results" MODIFIED="1678842707427" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/client" />
+    <SUITE FILE_PATH="coverage/pepper_DL$experiments.coverage" NAME="experiments Coverage Results" MODIFIED="1681270235657" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/client" />
+    <SUITE FILE_PATH="coverage/pepper_DL$client2.coverage" NAME="client2 Coverage Results" MODIFIED="1681270227391" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/client" />
+    <SUITE FILE_PATH="coverage/pepper_DL$yolo.coverage" NAME="yolo Coverage Results" MODIFIED="1679023793636" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/client/trackers/detection_models/edgeai_yolov5" />
+    <SUITE FILE_PATH="coverage/pepper_DL$server.coverage" NAME="server Coverage Results" MODIFIED="1678846995137" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/server" />
+    <SUITE FILE_PATH="coverage/pepper_DL$ocsort.coverage" NAME="bot_sort Coverage Results" MODIFIED="1680490715790" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/client/trackers/botsort" />
+  </component>
+</project>
