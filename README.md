@@ -52,13 +52,15 @@ python app.py
 ### Different environment for Llama 2
 "Precondition" -  The file who transfer the code in Llama to cpp format required  dnumpy==1.24, which is different to the requirement for Whisper_speaker_diarization.  
 
-### Setup
+### Installation
 The setup for Llama2 need to request for download the llama2 model from [facebook](https://www.youtube.com/redirect?event=video_description&redir_token=QUFFLUhqbmxkY2pESDMxOWNqVHBlTU1TMVAtOVFpeVVnZ3xBQ3Jtc0tuT1RsX2ZQZFBjWEZlRDA4QWVUbFhvNzNQbDg3ejBuRzFoSTJCM1Jzcm4xM2pLVHBXRHQtaWJIRVJXNW1HLUw4NG9WQW5xTk9LWVR0aUJzNzlYRzdhakNldl9jREdVc1gxZjU0WGZuclhNSWlDRkdURQ&q=https%3A%2F%2Fai.meta.com%2Fresources%2Fmodels-and-libraries%2Fllama-downloads%2F&v=TsVZJbnnaSs) at first, and request code for [this repo](https://github.com/facebookresearch/llama) to get the model for llama2. Then quantize the model in the [llama.cpp](https://github.com/facebookresearch/llama) in the [llama2 folder](https://github.com/Showwwwwwwww/HRI_CV_LLM/tree/main/llama2/llama.cpp) in this repo
 
 The complete process is Follwing this youtube video from Alex Ziskind : https://www.youtube.com/watch?v=TsVZJbnnaSs 
 
-### Using
+### Usage
+Please follow processes in [doc](https://github.com/Showwwwwwwww/HRI_CV_LLM/tree/main/llama2/llama.cpp#usage 
 
+### Running
 First you have to compile your program. For a cpp program usually g++ is used. So compile it with
 ```
 g++ -Wall -o prg prg.cpp
