@@ -3,7 +3,7 @@ git+https://github.com/pyannote/pyannote-audio
 git+https://github.com/openai/whisper.git
 gradio==3.12
 ffmpeg-python
-pandas==1.5.0
+pandas
 pytube==12.1.0
 sacremoses
 sentencepiece
@@ -20,3 +20,6 @@ requests
 gpuinfo
 faster-whisper
 yt-dlp
+pynput==1.7.6
+PyAudio
+sounddevice==0.4.6

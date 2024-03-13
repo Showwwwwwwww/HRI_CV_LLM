@@ -58,7 +58,7 @@ The setup for Llama2 need to request for download the llama2 model from [faceboo
 The complete process is Follwing this youtube video from Alex Ziskind : https://www.youtube.com/watch?v=TsVZJbnnaSs 
 
 ### Usage
-Please follow processes in [doc](https://github.com/Showwwwwwwww/HRI_CV_LLM/tree/main/llama2/llama.cpp#usage 
+Please follow processes in [doc](https://github.com/Showwwwwwwww/HRI_CV_LLM/tree/main/llama2/llama.cpp#usage)
 
 ### Running
 First you have to compile your program. For a cpp program usually g++ is used. So compile it with
