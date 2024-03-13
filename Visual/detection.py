@@ -3,9 +3,8 @@ import cv2
 import insightface
 import numpy as np
 from ultralytics import YOLO
-from utlis import feature_compare
+from Visual.utlis import feature_compare,generate_conversation_prompt
 from sklearn import preprocessing
-
 
 class FaceRecognition:
     def __init__(self, gpu_id=0, face_db='face_db', threshold=1.24, det_thresh=0.50, det_size=(640, 640)):
@@ -32,6 +31,7 @@ class FaceRecognition:
         # loading the face in db
         self.load_faces(self.face_db)
 
+
     # loading the face in db with feature
     def load_faces(self, face_db_path):
         if not os.path.exists(face_db_path):
@@ -54,7 +54,7 @@ class FaceRecognition:
 
     def recognition(self, image):
         faces = self.model.get(image)
-        results = list()
+        detectedPerson = list()
         prompt = ""
         for face in faces:
             # Start facial detection
@@ -66,13 +66,15 @@ class FaceRecognition:
                 # If this is the person who stored in the db
                 if r:
                     user_name = com_face["user_name"]
-                    # If the flag is true
+                    # If the flag is true, we only do it once
                     if com_face["flag"]:
                         com_face["age"] = face.age
                         com_face["sex"] = face.sex
                         com_face["flag"] = False
-            results.append(user_name)
-        return results, faces
+                        generate_conversation_prompt(com_face)
+            detectedPerson.append(user_name)
+
+        return detectedPerson, faces, prompt
 
     def draw_on_with_name(self, img, faces, names):
         # Add the name on the pic
@@ -117,12 +119,13 @@ if __name__ == '__main__':
         success, frame = cap.read()
         count = 0
         if success:
-            results = model.track(frame, persist=True)
+            results = model.track(frame, conf=0.5, persist=True, tracker='bytetrack.yaml')
             # annotated_frame = results[0].plot()
-            if count % 30 == 0:
-                names, faces = face_r.recognition(frame)
+            if count % 90 == 0:
+                names, faces, prompt = face_r.recognition(frame)
+                print(f'Here is the prompt{prompt}')
                 frame = face_r.draw_on_with_name(frame, faces, names)
-                cv2.imshow("InsightFace Inference", frame)
+            cv2.imshow("InsightFace Inference", frame)
             count += 1
             if cv2.waitKey(1) & 0xFF == ord("q"):
                 break
