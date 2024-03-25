@@ -1,19 +1,13 @@
 # import whisper
 from faster_whisper import WhisperModel
 import datetime
-import subprocess
-# import gradio as gr
-from pathlib import Path
 import pandas as pd
-import re
 import time
 import os
 import numpy as np
 from sklearn.cluster import AgglomerativeClustering
 from sklearn.metrics import silhouette_score
 
-from pytube import YouTube
-import yt_dlp
 import torch
 import pyannote.audio
 from pyannote.audio.pipelines.speaker_verification import PretrainedSpeakerEmbedding
@@ -30,7 +24,7 @@ import psutil
 # import Recroding video & audio
 import os
 import subprocess
-from pynput import keyboard
+# from pynput import keyboard
 
 # Import audio catch
 import sounddevice as sd
@@ -47,9 +41,10 @@ current_key = None
 # function to start recording
 def on_key_press(key):
     global current_key
-    if key == keyboard.Key.esc:
-        exit()
-    current_key = key
+    pass
+    #if key == keyboard.Key.esc:
+        #exit()
+    #current_key = key
 
 
 def on_key_release(key):
@@ -73,119 +68,16 @@ def stop_recording(process):
 
 
 whisper_models = ["tiny", "base", "small", "medium", "large-v1", "large-v2"]
-source_languages = {
-    "en": "English",
-    "zh": "Chinese",
-    "de": "German",
-    "es": "Spanish",
-    "ru": "Russian",
-    "ko": "Korean",
-    "fr": "French",
-    "ja": "Japanese",
-    "pt": "Portuguese",
-    "tr": "Turkish",
-    "pl": "Polish",
-    "ca": "Catalan",
-    "nl": "Dutch",
-    "ar": "Arabic",
-    "sv": "Swedish",
-    "it": "Italian",
-    "id": "Indonesian",
-    "hi": "Hindi",
-    "fi": "Finnish",
-    "vi": "Vietnamese",
-    "he": "Hebrew",
-    "uk": "Ukrainian",
-    "el": "Greek",
-    "ms": "Malay",
-    "cs": "Czech",
-    "ro": "Romanian",
-    "da": "Danish",
-    "hu": "Hungarian",
-    "ta": "Tamil",
-    "no": "Norwegian",
-    "th": "Thai",
-    "ur": "Urdu",
-    "hr": "Croatian",
-    "bg": "Bulgarian",
-    "lt": "Lithuanian",
-    "la": "Latin",
-    "mi": "Maori",
-    "ml": "Malayalam",
-    "cy": "Welsh",
-    "sk": "Slovak",
-    "te": "Telugu",
-    "fa": "Persian",
-    "lv": "Latvian",
-    "bn": "Bengali",
-    "sr": "Serbian",
-    "az": "Azerbaijani",
-    "sl": "Slovenian",
-    "kn": "Kannada",
-    "et": "Estonian",
-    "mk": "Macedonian",
-    "br": "Breton",
-    "eu": "Basque",
-    "is": "Icelandic",
-    "hy": "Armenian",
-    "ne": "Nepali",
-    "mn": "Mongolian",
-    "bs": "Bosnian",
-    "kk": "Kazakh",
-    "sq": "Albanian",
-    "sw": "Swahili",
-    "gl": "Galician",
-    "mr": "Marathi",
-    "pa": "Punjabi",
-    "si": "Sinhala",
-    "km": "Khmer",
-    "sn": "Shona",
-    "yo": "Yoruba",
-    "so": "Somali",
-    "af": "Afrikaans",
-    "oc": "Occitan",
-    "ka": "Georgian",
-    "be": "Belarusian",
-    "tg": "Tajik",
-    "sd": "Sindhi",
-    "gu": "Gujarati",
-    "am": "Amharic",
-    "yi": "Yiddish",
-    "lo": "Lao",
-    "uz": "Uzbek",
-    "fo": "Faroese",
-    "ht": "Haitian creole",
-    "ps": "Pashto",
-    "tk": "Turkmen",
-    "nn": "Nynorsk",
-    "mt": "Maltese",
-    "sa": "Sanskrit",
-    "lb": "Luxembourgish",
-    "my": "Myanmar",
-    "bo": "Tibetan",
-    "tl": "Tagalog",
-    "mg": "Malagasy",
-    "as": "Assamese",
-    "tt": "Tatar",
-    "haw": "Hawaiian",
-    "ln": "Lingala",
-    "ha": "Hausa",
-    "ba": "Bashkir",
-    "jw": "Javanese",
-    "su": "Sundanese",
-}
-
-source_language_list = [key[0] for key in source_languages.items()]
-
-
 # MODEL_NAME = "vumichien/whisper-medium-jp"
 
 class Whisper:
-    def __init__(self, MODEL_NAME="vumichien/whisper-medium-jp", whisper_model="medium"):
-        self.model = WhisperModel(whisper_model, compute_type="int8")
+    def __init__(self, MODEL_NAME="vumichien/whisper-medium-jp", whisper_model="medium", gpu_id=0):
+        #self.model = WhisperModel(whisper_model, compute_type="int8")
+        self.model = WhisperModel(whisper_model, device="cuda", compute_type="int8_float16")
         self.MODEL_NAME = MODEL_NAME
         lang = "en"
-        device = 0 if torch.cuda.is_available() else "cpu"
+        device = gpu_id if torch.cuda.is_available() else "cpu"
+        print(f"Using device: {device}")
         self.pipe = pipeline(
             task="automatic-speech-recognition",
             model=MODEL_NAME,
@@ -217,7 +109,7 @@ class Whisper:
 
         return warn_output + text
 
-    def speech_to_text(self, audio_file, selected_source_lang,  joined_person):
+    def speech_to_text(self, audio_file, save_path,selected_source_lang, joined_person):
         """
         1. Using Open AI's Whisper model to seperate audio into segments and generate transcripts.
         2. Generating speaker embeddings for each segments.
@@ -252,7 +144,6 @@ class Whisper:
             options = dict(language=selected_source_lang, beam_size=5, best_of=5)
             transcribe_options = dict(task="transcribe", **options)
             segments_raw, info = self.model.transcribe(audio_file, **transcribe_options)
-
             # Convert back to original openai format
             segments = []
             i = 0
@@ -264,6 +155,9 @@ class Whisper:
                 segments.append(chunk)
                 i += 1
             print("transcribe audio done with fast whisper")
+            if len(segments) == 0:
+                print("Nothing containing in this audio")
+                return
         except Exception as e:
             raise RuntimeError("Error converting video to audio")
 
@@ -284,8 +178,8 @@ class Whisper:
             embeddings = np.nan_to_num(embeddings)
             print(f'Embedding shape: {embeddings.shape}')
 
-            # if their is no target person who has be detected in this conversation, let the algorithm to evaluate by itself to find the #spekears
-            if num_speakers == 0: # no target joined
+            # if there is no target person who has be detected in this conversation, let the algorithm to evaluate by itself to find the #spekears
+            if num_speakers == 0:  # no target joined
                 # Find the best number of speakers
                 try:
                     score_num_speakers = {}
@@ -327,7 +221,7 @@ class Whisper:
                         segments[i]["speaker"] = 'SPEAKER ' + joined_person[0]
                         # segments[i]["speaker"] = 'SPEAKER ' + str(i + 1)
 
-            txtFilename = "../llama2/llama.cpp/in_output/input.txt"
+            txtFilename = "./../output/llamaData/input.txt"
             # Make output
             objects = {
                 'Start': [],
@@ -336,6 +230,7 @@ class Whisper:
                 'Text': []
             }
             text = ''
+            # print(segments)
             for (i, segment) in enumerate(segments):
                 if i == 0 or segments[i - 1]["speaker"] != segment["speaker"]:
                     objects['Start'].append(str(convert_time(segment["start"])))
@@ -344,10 +239,16 @@ class Whisper:
                         objects['End'].append(str(convert_time(segments[i - 1]["end"])))
                         objects['Text'].append(text)
                         text = ''
-                text += segment["text"] + ' '
+                text = text + segment["speaker"] + ' say: ' + '\'' + segment["text"] + '\'' + '     '
                 with open(txtFilename, 'a') as file:
                     file.write(text)
-            objects['End'].append(str(convert_time(segments[i - 1]["end"])))
+
+            tempValue = 0 if i == 0 else i-1
+            print(f"i is. {i}")
+            print(f"tempValue is , {tempValue}")
+            print(f"segments is , {segments}")
+            print(f"objects is , {objects}")
+            objects['End'].append(str(convert_time(segments[tempValue]["end"])))
             objects['Text'].append(text)
 
             time_end = time.time()
@@ -361,7 +262,7 @@ class Whisper:
             *Processing time: {time_diff:.5} seconds.*
             *GPU Utilization: {gpu_utilization}%, GPU Memory: {gpu_memory}MiB.*
             """
-            save_path = "output/transcript_result.csv"
+            # save_path = "./../database/transcripts/transcript_result.csv"
             df_results = pd.DataFrame(objects)
             df_results.to_csv(save_path, mode='a')
             print(df_results)
@@ -373,7 +274,7 @@ class Whisper:
 
 
 def main():
-    whisper = Whisper()
+    whisper = Whisper(whisper_model="large-v2",gpu_id=1)
     chunk_size = 1024
     audio_format = pyaudio.paInt16
     channels = 1
@@ -446,8 +347,13 @@ def main():
         wf.writeframes(b''.join(frames))
         wf.close()
         count += 1
-        whisper.speech_to_text(wave_output_filename, "en", ['Shuo Chen'])
+        whisper.speech_to_text(wave_output_filename, './output/transcript_result.csv',"en", ['Shuo Chen'])
 
 
 if __name__ == "__main__":
-    main()
+    # main()
+    whisper = Whisper(whisper_model="large-v2", gpu_id=1)
+    for file in os.listdir("./recording/"):
+        if file.endswith(".wav"):
+            wave_output_filename = os.path.join("./recording/", file)
+            whisper.speech_to_text(wave_output_filename, './../output/transcript_result.csv', "en", ['Shuo Chen'])
