@@ -24,11 +24,16 @@ conda install anaconda::cudatoolkit
 ```
 
 ### Whisper & Video Module
+CUDA=11.8 Python=3.11.8
+
 Install requirements file
 ```angular2html
+conda create -n module -c conda-forge cudatoolkit=11.8 cudnn cudatoolkit-dev torchvision python=3.11.8 
+conda activate module
 pip install -r ./Whisper_speaker_diarization/requirements.txt
 pip install -r ./Visual/requirements.txt
 ```
+
 If meet the issue for install pyaduio, execute the command: 
 ```angular2html
 sudo apt-get install libasound-dev
