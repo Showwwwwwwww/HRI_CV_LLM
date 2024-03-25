@@ -14,6 +14,29 @@ The framework required 4 pieces of module to running:
 3. Pepper(Incomplete)
 4. Yolov8(Incomplete)
 
+## Environment
+### llama
+
+```
+conda create -n llama python=3.10.9
+conda activate llama
+conda install anaconda::cudatoolkit
+```
+
+### Whisper & Video Module
+Install requirements file
+```angular2html
+pip install -r ./Whisper_speaker_diarization/requirements.txt
+pip install -r ./Visual/requirements.txt
+```
+If meet the issue for install pyaduio, execute the command: 
+```angular2html
+sudo apt-get install libasound-dev
+sudo apt-get install portaudio19-dev
+pip install pyaduio
+```
+
+
 
 ## Whisper 
 Whisper is the ASR techniques we used in this project, meanhwhile, for the diaziration version, it can recognize different speakers in one audio and assign people for each sentence. 
@@ -117,7 +140,8 @@ to be able to invoke the program.
 
 Example:
 ```
-./main -m ./models/7B/ggml-model-q4_0.bin -n 1024 --repeat_penalty 1.0 --color -i -r "User:" -f ./prompts/chat-with-bob.txt
+CUDA_VISIBLE_DEVICE=1 ./main -m ./models/7B/ggml-model-q4_0.bin -n 1024 --repeat_penalty 1.0 --color -i -r "User:" -f ./prompts/customisedChatPrompt.txt
 ```
+
 
 

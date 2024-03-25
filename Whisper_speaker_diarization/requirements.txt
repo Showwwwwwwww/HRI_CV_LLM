@@ -1,10 +1,8 @@
 git+https://github.com/huggingface/transformers
 git+https://github.com/pyannote/pyannote-audio
 git+https://github.com/openai/whisper.git
-gradio==3.12
 ffmpeg-python
 pandas
-pytube==12.1.0
 sacremoses
 sentencepiece
 tokenizers
@@ -21,5 +19,5 @@ gpuinfo
 faster-whisper
 yt-dlp
 pynput==1.7.6
-PyAudio
+PyAudio==0.2.14
 sounddevice==0.4.6
