@@ -2,12 +2,14 @@ import os
 import cv2
 import insightface
 import numpy as np
+import torch
 from ultralytics import YOLO
-from Visual.utlis import feature_compare,generate_conversation_prompt
+from utlis import feature_compare,generate_conversation_prompt
+#from Visual.utlis import feature_compare,generate_conversation_prompt
 from sklearn import preprocessing
 
 class FaceRecognition:
-    def __init__(self, gpu_id=0, face_db='face_db', threshold=1.24, det_thresh=0.50, det_size=(640, 640)):
+    def __init__(self, gpu_id=0, face_db='./../database/face_db', threshold=1.24, det_thresh=0.50, det_size=(640, 640)):
         """
         Face Recognition Tool
         :param gpu_id: Positive number represent the ID for GPU, negative number is for using CPU
@@ -24,7 +26,7 @@ class FaceRecognition:
 
         # Loading the model
         self.model = insightface.app.FaceAnalysis(name='buffalo_l',
-                                                  providers=['CPUExecutionProvider'])
+                                                  providers=['CUDAExecutionProvider'])
         self.model.prepare(ctx_id=self.gpu_id, det_thresh=self.det_thresh, det_size=self.det_size)
         # facial feature
         self.faces_embedding = list()
@@ -70,7 +72,7 @@ class FaceRecognition:
                     if com_face["flag"]:
                         com_face["age"] = face.age
                         com_face["sex"] = face.sex
-                        com_face["flag"] = False
+                        com_face["flag"] = False  #flag==False means we have already generated the prompt to this person
                         generate_conversation_prompt(com_face)
             detectedPerson.append(user_name)
 
@@ -109,17 +111,18 @@ class FaceRecognition:
 
 
 if __name__ == '__main__':
-
+    device = 2 if torch.cuda.is_available() else 'cpu'
     model = YOLO('yolov8s.pt')
-    face_r = FaceRecognition()
-
+    model.to(device)
+    face_r = FaceRecognition(face_db='face_db')
     cap = cv2.VideoCapture(0)
 
     while cap.isOpened():
         success, frame = cap.read()
         count = 0
         if success:
-            results = model.track(frame, conf=0.5, persist=True, tracker='bytetrack.yaml')
+
+            results = model.track(frame, conf=0.5, persist=True, tracker='bytetrack.yaml',device=0)
             # annotated_frame = results[0].plot()
             if count % 90 == 0:
                 names, faces, prompt = face_r.recognition(frame)
@@ -131,6 +134,6 @@ if __name__ == '__main__':
                 break
         else:
             break
-
+    
     cap.release()
     cv2.destroyAllWindows()

@@ -1,23 +1,25 @@
 import cv2
-# Import the audio
 import pyaudio
-
 import numpy as np
-
 import wave
-
+import torch
 from ultralytics import YOLO
 from Visual.detection import FaceRecognition
 from Whisper_speaker_diarization.whisper import Whisper
 
-def main():
-    # load SpeechRecognition Module
-    whisper = Whisper()
-    print("Whisper Initialized")
 
+
+def main():
+    device = 0 if torch.cuda.is_available() else 'cpu'
+    # load SpeechRecognition Module
+    whisper = Whisper(whisper_model="large-v2",gpu_id=1)
+    print("Whisper Initialized")
     # Load vision Module
     yoloModel = YOLO('yolov8s.pt')
-    face_r = FaceRecognition()
+    # Apply GPU
+    yoloModel.to(device)
+    # Use GPU as well, will get error if using cpu
+    face_r = FaceRecognition(face_db='./database/face_db', gpu_id=device)
     print("Vision Module Initialized")
 
     # Set up the default parameters for recording video, threshold and volume
@@ -33,9 +35,7 @@ def main():
     cap = cv2.VideoCapture(0)
 
     while True:
-
-
-        wave_output_filename = f'test{count}.wav'
+        wave_output_filename = f'./output/speech/test{count}.wav'
         p = pyaudio.PyAudio()
         stream = p.open(format=audio_format,
                         channels=channels,
@@ -63,7 +63,7 @@ def main():
                 results = yoloModel.track(frame, conf=0.5, persist=True, tracker='bytetrack.yaml')
                 #if frame_count % 90 == 0:
                 detected_person, faces, prompt = face_r.recognition(frame)
-                print(f'Here is the prompt{prompt}')
+                # print(f'Here is the prompt{prompt}')
                 frame = face_r.draw_on_with_name(frame, faces, detected_person)
 
                 cv2.imshow("InsightFace Inference", frame)
@@ -116,7 +116,7 @@ def main():
         wf.writeframes(b''.join(frames))
         wf.close()
         count += 1
-        whisper.speech_to_text(wave_output_filename, "en", detected_person)
+        whisper.speech_to_text(wave_output_filename,'./output/transcript/transcript_result.csv', "en", detected_person)
 
 
 if __name__ == '__main__':
