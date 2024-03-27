@@ -1,6 +1,7 @@
 insightface==0.7.3
 numpy
 onnxruntime
+onnxruntime-gpu
 opencv==4.09.0
 opencv-python==4.9.0.80
 ultralytics
