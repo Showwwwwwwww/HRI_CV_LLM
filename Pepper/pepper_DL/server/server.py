@@ -10,11 +10,13 @@ import argparse
 import io
 import base64
 
-from flask import Flask, request, Response, jsonify
+from flask import Flask, request, Response, jsonify,send_file
 from PIL import Image
 from camera import CameraManager
 from locomotion import MovementManager
 from voice import SpeechManager
+from audio import AudioManager
+
 
 # Initiate Qi Session
 session = qi.Session()
@@ -41,19 +43,24 @@ life_service = session.service("ALAutonomousLife")
 # Controls the robot's cameras
 print("Subscribing to camera service...")
 camera_manager = CameraManager(session, resolution=0, colorspace=11, fps=30)
-# Controls the robot's locomotion
-print("Subscribing to movement service...")
-motion_manager = MovementManager(session)
 # Controls the robot's speech
 print("Subscribing to speech service...")
 speech_manager = SpeechManager(session)
-
+# Control the robot's microphone
+audio_manager = AudioManager(session)
 # Disable autonomous life because it can interfere with follow behaviour
 life_service.setAutonomousAbilityEnabled("All", False)
 
-
 # Start Flask server
 app = Flask(__name__)
+
+@app.route("/audio/get_latest_recording", methods=["GET"])
+def get_latest_recording():
+    audio_file_path = audio_manager.get_latest_recording()
+    if audio_file_path and os.path.exists(audio_file_path):
+        return send_file(audio_file_path, mimetype="audio/wav", as_attachment=True, attachment_filename=os.path.basename(audio_file_path))
+    else:
+        return jsonify({'error': 'No recording found'}), 404
 
 @app.route("/image/send_image", methods=["POST"])
 def send_image():
@@ -69,26 +76,6 @@ def send_image():
         'img': str(img_base64),
     })
 
-@app.route("/voice/startup_greeting", methods=["POST"])
-def startup_greeting():
-    # Makes Pepper greet the user and provide basic instructions
-    speech_manager.say("Connected to deep learning client. Please raise your hand if you want me to follow you.")
-    return jsonify({
-        "msg": "success"})
-
-@app.route("/voice/targetLost", methods=["POST"])
-def target_lost():
-    # Makes Pepper greet the user and provide basic instructions
-    speech_manager.target_lost()
-    return jsonify({
-        "msg": "success"})
-
-@app.route("/voice/targetDetected", methods=["POST"])
-def target_detected():
-    # Makes Pepper greet the user and provide basic instructions
-    speech_manager.target_lost()
-    return jsonify({
-        "msg": "success"})
 
 @app.route("/voice/say", methods=["POST"])
 def say():
@@ -97,53 +84,6 @@ def say():
     return jsonify({
         "msg": "success"})
 
-@app.route("/locomotion/walkToward", methods=["POST"])
-def walkToward():
-    args = request.args
-    x = float(args.get("x", 0))
-    y = float(args.get("y", 0))
-    theta = float(args.get("theta", 0))
-    verbose = int(args.get("verbose", 0))
-    motion_manager.walkToward(x=x, y=y, theta=theta, verbose=verbose)
-    return jsonify({
-        "msg": "success"})
-
-@app.route("/locomotion/walkTo", methods=["POST"])
-def walkTo():
-    args = request.args
-    x = float(args.get("x", 0))
-    y = float(args.get("y", 0))
-    theta = float(args.get("theta", 0))
-    verbose = int(args.get("verbose", 0))
-    motion_manager.walkTo(x=x, y=y, theta=theta, verbose=verbose)
-    return jsonify({
-        "msg": "success"})
-
-@app.route("/locomotion/rotateHead", methods=["POST"])
-def rotate_head():
-    args = request.args
-    forward = float(args.get("forward", 0))
-    left = float(args.get("left", 0))
-    speed = float(args.get("speed", 0.2))
-    motion_manager.rotate_head(forward=forward, left=left, speed=speed)
-    return jsonify({
-        "msg": "success"})
-
-@app.route("/locomotion/rotateHeadAbs", methods=["POST"])
-def rotate_head_abs():
-    args = request.args
-    forward = float(args.get("forward", 0))
-    left = float(args.get("left", 0))
-    speed = float(args.get("speed", 0.2))
-    motion_manager.rotate_head_abs(forward=forward, left=left, speed=speed)
-    return jsonify({
-        "msg": "success"})
-
-@app.route("/locomotion/stop", methods=["POST"])
-def stop():
-    motion_manager.stop()
-    return jsonify({
-        "msg": "success"})
 
 @app.route("/setup/end", methods=["POST"])
 def shutdown():
@@ -184,6 +124,6 @@ if __name__ == '__main__':
     # start flask app
     app.run(host="0.0.0.0", port=5000)
     del camera_manager
-    del motion_manager
     del life_service
     del speech_manager
+    del audio_manager

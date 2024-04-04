@@ -37,12 +37,13 @@ if __name__ == '__main__':
             for result in results:
                 boxes = result.boxes.cpu().numpy()
                 for i, box in enumerate(boxes):
-                    r = box.xyxy[0].astype(int)
-                    crop = frame[r[1]:r[3], r[0]:r[2]]
-                    filename = str(i) + ".jpg"
-                    # get the crop image when only detect person
-                    if box.conf[0] > 0.5 and int(box.cls) == 0:
+                    #  save the cropped person image if detected
+                    if int(box.cls) == 0 and box.conf[0] > 0.5 :
+                        r = box.xyxy[0].astype(int)
+                        crop = frame[r[1]:r[3], r[0]:r[2]]
+                        filename = str(i) + ".jpg"
                         filename = os.path.join(path, filename)
+                        # feed into insightface to estimate age.gender..
                         face_dets = face_model.get(crop)
                         rimg = face_model.draw_on(crop, face_dets)
                         cv2.imwrite(filename, rimg)
