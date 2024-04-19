@@ -242,7 +242,7 @@ endif #LLAMA_CUDA_NVCC
 ifdef CUDA_DOCKER_ARCH
 	NVCCFLAGS += -Wno-deprecated-gpu-targets -arch=$(CUDA_DOCKER_ARCH)
 else
-	NVCCFLAGS += -arch=native
+	NVCCFLAGS += -arch=sm_87
 endif # CUDA_DOCKER_ARCH
 ifdef LLAMA_CUDA_FORCE_DMMV
 	NVCCFLAGS += -DGGML_CUDA_FORCE_DMMV

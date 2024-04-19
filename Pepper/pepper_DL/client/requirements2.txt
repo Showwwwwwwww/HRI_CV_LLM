@@ -11,4 +11,7 @@ seaborn
 scikit-image
 filterpy
 cython-bbox
+lap
 # Need to install a compatible version of PyTorch. I did not include this because it can vary from machine to machine.
+# For our machine, we used the following:
+# conda install pytorch torchvision torchaudio pytorch-cuda=11.7 -c pytorch -c nvidia

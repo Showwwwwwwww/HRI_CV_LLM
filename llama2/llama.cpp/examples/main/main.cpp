@@ -48,6 +48,13 @@ static std::ostringstream       * g_output_ss;
 static std::vector<llama_token> * g_output_tokens;
 static bool is_interacting = false;
 
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include <sys/types.h>
+#include <sys/ipc.h>
+#include <sys/shm.h>
+#include <unistd.h>
 
 
 // Function We write for read content from "input.txt" as the prompt for LLama Model
@@ -64,6 +71,16 @@ std::string ReadAndClearFile(const std::string &filename) {
     return content;
 }
 
+void saveConversation(const std::string& input) {
+                    std::ofstream outputFile;
+                    outputFile.open("./../../output/conversation/conversation_record.csv", std::ios::app);
+                    if (outputFile.is_open()) {
+                        outputFile << input << "\n";
+                        outputFile.close();
+                    } else {
+                        std::cout << "Failed to open the CSV file for writing." << std::endl;
+                    }
+                }
 
 // For write the output token into the output.txt as the response for robot
 // Function to write content to a text file
@@ -77,7 +94,7 @@ void WriteToFile(const std::string& filename,  const std::string output) {
         // In case the token will return "" but it is tokenized the Buffer
         if (output != "") {
         file << output;  // .c_str() is not needed for std::string
-        } 
+        }
         // Close the file
         file.close();
     } else {
@@ -85,6 +102,7 @@ void WriteToFile(const std::string& filename,  const std::string output) {
         std::cerr << "Unable to open file: " << filename << std::endl;
     }
 }
+
 
 // Write to cutomized the output response which will send to Pepper
 std::string extractSentence(const std::string& input) {
@@ -102,7 +120,7 @@ std::string extractSentence(const std::string& input) {
     }
 
     // Return an empty string if the pattern is not found
-    return "";
+    return "empty result";
 }
 
 void write_logfile(
@@ -695,10 +713,10 @@ int main(int argc, char ** argv) {
                 n_session_consumed = session_tokens.size();
             }
         }
-       
+
         embd.clear();
         embd_guidance.clear();
-        
+
         if ((int) embd_inp.size() <= n_consumed && !is_interacting) {
             const float   temp            = params.temp;
             const int32_t top_k           = params.top_k <= 0 ? llama_n_vocab(ctx) : params.top_k;
@@ -799,21 +817,29 @@ int main(int argc, char ** argv) {
                         }
 
                         id = llama_sample_token(ctx, &cur_p);
-                        
-                        // Store the Response Token 
+
+                        // Store the Response Token
                         responseTokens += llama_token_to_piece(ctx, id).c_str();
-                        
+
                         //LOG("responseTokens:'%s'\n", responseTokens.c_str());
                         LOG("sampled token: %5d: '%s'\n", id, llama_token_to_piece(ctx, id).c_str());
                     }
                 }
                 // printf("`%d`", candidates_p.size);
 
-                std::string outFilename = "/Users/chen/Desktop/robot/robot_research/llama2/llama.cpp/in_output/output.txt";
+                // std::string outFilename = "in_output/output.txt";
+                //std::string outFilename = "../../output/llamaData/output.txt";
                 std::string response = extractSentence(responseTokens);
-                WriteToFile(outFilename,response);
+                //WriteToFile(outFilename,response);
                 //WriteToFile(outFilename,responseTokens);
                 //responseTokens = "";
+                std::ofstream outPipe("./../../pipes/pipe_cpp_to_py"); // Stores in Root Directory
+                if (outPipe.is_open()) {
+                    outPipe << response << std::endl;
+                    outPipe.close();
+                    }
+                saveConversation(response); // Write response into the csv file to record
+                
 
                 if (grammar != NULL) {
                     llama_grammar_accept_token(ctx, grammar, id);
@@ -824,7 +850,7 @@ int main(int argc, char ** argv) {
 
                 LOG("last: %s\n", LOG_TOKENS_TOSTR_PRETTY(ctx, last_n_tokens));
             }
-            
+
             embd.push_back(id);
 
             // echo this to console
@@ -951,18 +977,29 @@ int main(int argc, char ** argv) {
                     //buffer += line;
                 //} while (another_line);
 
-                std::string filename = "/Users/chen/Desktop/robot/robot_research/llama2/llama.cpp/in_output/input.txt";
-                bool another_line = true;
-                responseTokens = "";
-                while (another_line) {
-                    std::this_thread::sleep_for(std::chrono::seconds(1));  // wait for 1 second
 
-                    std::string content = ReadAndClearFile(filename);
-                    if (!content.empty()) {
-                        another_line = false;
-                        buffer += content;
-                    }
-                }
+                //std::string filename = "in_output/input.txt";
+                // std::string filename = "../../output/llamaData/input.txt";
+                // bool another_line = true;
+                // responseTokens = "";
+                // while (another_line) {
+                //     std::this_thread::sleep_for(std::chrono::seconds(1));  // wait for 1 second
+
+                //     std::string content = ReadAndClearFile(filename);
+                //     if (!content.empty()) {
+                //         another_line = false;
+                //         buffer += content;
+                //     }
+                // }
+                std::string content;
+                std::ifstream inPipe("./../../pipes/pipe_py_to_cpp"); // Receive the transcripr from whisper
+                getline(inPipe, content);
+                buffer+=content;
+                inPipe.close();
+
+                // Inside the code block where you want to save the conversation
+                saveConversation(content);
+                
 
                 // done taking input, reset color
                 console::set_display(console::reset);
@@ -1046,15 +1083,15 @@ int main(int argc, char ** argv) {
 
 
 
-   
+
     if (!path_session.empty() && params.prompt_cache_all && !params.prompt_cache_ro) {
         LOG_TEE("\n%s: saving final output to session file '%s'\n", __func__, path_session.c_str());
         llama_save_session_file(ctx, path_session.c_str(), session_tokens.data(), session_tokens.size());
     }
-    
+
     llama_print_timings(ctx);
     write_logfile(ctx, params, model, input_tokens, output_ss.str(), output_tokens);
-    
+
 
 
     if (ctx_guidance) { llama_free(ctx_guidance); }

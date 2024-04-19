@@ -4,6 +4,7 @@ import cv2
 import csv
 import numpy as np
 import pandas as pd
+import torch.nn as nn
 from utils.torch_utils import select_device
 from models.experimental import attempt_load
 from utils.general import check_img_size, non_max_suppression, scale_coords
@@ -18,6 +19,12 @@ class YoloManager():
             weights_dir = os.path.join(os.path.dirname(__file__), "weights", 'yoloposes_640_lite.pt')
         # Load model
         self.model = attempt_load(weights_dir, map_location=self.device)  # load model
+        
+        # Fix Upsample error
+        for m in self.model.modules():
+            if isinstance(m, nn.Upsample):
+                m.recompute_scale_factor = None
+                
         self.stride = int(self.model.stride.max())  # model stride
         self.names = self.model.module.names if hasattr(self.model, 'module') else self.model.names  # get class names
         self.kpt_label = kpt_label
@@ -65,13 +72,13 @@ class YoloManager():
         """
         return prediction[:, :5]
 
-    def extract_keypoint_data(self, prediction):
+    def extract_keypoint_data(self, prediction, reshape=True):
         # Extracts prediction keypoints and reshapes them into:
         #   (number of detections, 17 key points, 3 features consisting of x, y, confidence)
-        return prediction[:, 6:].reshape(prediction.shape[0], 17,3)
+        return prediction[:, 6:].reshape(prediction.shape[0], 17,3) if reshape else prediction[:, 6:]
 
-    def extract_bounding_box_and_keypoint(self, prediction):
-        return self.extract_bounding_box_data(prediction), self.extract_keypoint_data(prediction)
+    def extract_bounding_box_and_keypoint(self, prediction, reshape_kpt=True):
+        return self.extract_bounding_box_data(prediction), self.extract_keypoint_data(prediction, reshape=reshape_kpt)
 
     def predict(self, frame, augment=False, conf_thres=0.25, classes=None, iou_thres=0.45, agnostic_nms=False, preprocess=True, scale_to_original=True):
         if preprocess:
@@ -92,13 +99,15 @@ class YoloManager():
         scale_coords(self.image_size, prediction[:, :4], original_shape, kpt_label=False)
         scale_coords(self.image_size, prediction[:, 6:], original_shape, kpt_label=self.kpt_label, step=3)
 
+
     def draw(self, prediction, img, show=True):
         # for det_index, (*xyxy, conf, cls) in enumerate(reversed(prediction[:,:6])):
         for det_index, (*xyxy, conf, cls) in enumerate(prediction[:,:6]):
             plot_one_box(xyxy, img, label=(f'{self.names[int(cls)]} {conf:.2f}'), color=colors(int(cls),True), line_thickness=2, kpt_label=self.kpt_label, kpts=prediction[det_index, 6:], steps=3, orig_shape=img.shape[:2])
-        if show:
+        if show is not None:
             cv2.imshow("Image", img)
-            cv2.waitKey(0)
+            cv2.waitKey(1)
+
 
     def draw_and_save(self, in_dir, out_dir=None, rescale=None, conf_thres=0.25, iou_thres=0.45, save_as="jpg"):
         """ Runs sort on every single frame in in_dir and saves it to out_dir

@@ -58,7 +58,7 @@ To use this code, you need to set up the hardware and software. Let's start with
 4. On Pepper's tablet, in the Wi-Fi tab, find its IP address and record it somewhere
 
 For the software, follow these steps:
-1. Clone [this repo](https://github.com/Wjjay/pepper_DL/tree/pepper_flask) and make sure the branch is **pepper_flask**
+1. Clone [this repo](https://github.com/Wjjay/pepper_DL/tree/pepper_flask) and make sure the branch is **pepper_skeleton**
 2. On Anaconda, create a Python 2, and a Python 3 virtual environment
 3. Visit this [website](https://www.aldebaran.com/en/support/pepper-naoqi-2-9/downloads-softwares) and download the Python 2.7 SDK with the same OS that you're using, and the same NAOqi version as your Pepper robot[^1]
 4. Unzip the Python SDK and copy-paste its contents into the Python 2 environment that you've just created, replacing everything

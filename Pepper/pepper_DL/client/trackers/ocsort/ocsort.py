@@ -85,24 +85,22 @@ class KalmanBoxTracker(object):
     """
     count = 0
 
-    def __init__(self, bbox, delta_t=3, orig=False):
+    def __init__(self, bbox, kpts, delta_t=3, orig=False):
         """
         Initialises a tracker using initial bounding box.
 
         """
         # define constant velocity model
         if not orig:
-          # Remove dot at front to run as standalone
-          from .kalmanfilter import KalmanFilterNew as KalmanFilter
-          #from kalmanfilter import KalmanFilterNew as KalmanFilter
-          self.kf = KalmanFilter(dim_x=7, dim_z=4)
+            from .kalmanfilter import KalmanFilterNew as KalmanFilter
+            self.kf = KalmanFilter(dim_x=7, dim_z=4)
         else:
-          from filterpy.kalman import KalmanFilter
-          self.kf = KalmanFilter(dim_x=7, dim_z=4)
+            from filterpy.kalman import KalmanFilter
+            self.kf = KalmanFilter(dim_x=7, dim_z=4)
         self.kf.F = np.array([[1, 0, 0, 0, 1, 0, 0], [0, 1, 0, 0, 0, 1, 0], [0, 0, 1, 0, 0, 0, 1], [
-                            0, 0, 0, 1, 0, 0, 0],  [0, 0, 0, 0, 1, 0, 0], [0, 0, 0, 0, 0, 1, 0], [0, 0, 0, 0, 0, 0, 1]])
+            0, 0, 0, 1, 0, 0, 0], [0, 0, 0, 0, 1, 0, 0], [0, 0, 0, 0, 0, 1, 0], [0, 0, 0, 0, 0, 0, 1]])
         self.kf.H = np.array([[1, 0, 0, 0, 0, 0, 0], [0, 1, 0, 0, 0, 0, 0],
-                            [0, 0, 1, 0, 0, 0, 0], [0, 0, 0, 1, 0, 0, 0]])
+                              [0, 0, 1, 0, 0, 0, 0], [0, 0, 0, 1, 0, 0, 0]])
 
         self.kf.R[2:, 2:] *= 10.
         self.kf.P[4:, 4:] *= 1000.  # give high uncertainty to the unobservable initial velocities
@@ -128,8 +126,9 @@ class KalmanBoxTracker(object):
         self.history_observations = []
         self.velocity = None
         self.delta_t = delta_t
+        self.kpts = kpts
 
-    def update(self, bbox):
+    def update(self, bbox, kpts):
         """
         Updates the state vector with observed bbox.
         """
@@ -139,7 +138,7 @@ class KalmanBoxTracker(object):
                 for i in range(self.delta_t):
                     dt = self.delta_t - i
                     if self.age - dt in self.observations:
-                        previous_box = self.observations[self.age-dt]
+                        previous_box = self.observations[self.age - dt]
                         break
                 if previous_box is None:
                     previous_box = self.last_observation
@@ -147,7 +146,7 @@ class KalmanBoxTracker(object):
                   Estimate the track speed direction with observations \Delta t steps away
                 """
                 self.velocity = speed_direction(previous_box, bbox)
-            
+
             """
               Insert new observations. This is a ugly way to maintain both self.observations
               and self.history_observations. Bear it for the moment.
@@ -161,6 +160,7 @@ class KalmanBoxTracker(object):
             self.hits += 1
             self.hit_streak += 1
             self.kf.update(convert_bbox_to_z(bbox))
+            self.kpts = kpts
         else:
             self.kf.update(bbox)
 
@@ -168,12 +168,12 @@ class KalmanBoxTracker(object):
         """
         Advances the state vector and returns the predicted bounding box estimate.
         """
-        if((self.kf.x[6]+self.kf.x[2]) <= 0):
+        if ((self.kf.x[6] + self.kf.x[2]) <= 0):
             self.kf.x[6] *= 0.0
 
         self.kf.predict()
         self.age += 1
-        if(self.time_since_update > 0):
+        if (self.time_since_update > 0):
             self.hit_streak = 0
         self.time_since_update += 1
         self.history.append(convert_x_to_bbox(self.kf.x))
@@ -200,8 +200,8 @@ ASSO_FUNCS = {  "iou": iou_batch,
 
 
 class OCSort(object):
-    def __init__(self, det_thresh, max_age=30, min_hits=3, 
-        iou_threshold=0.3, delta_t=3, asso_func="iou", inertia=0.2, use_byte=False):
+    def __init__(self, det_thresh, max_age=30, min_hits=3,
+                 iou_threshold=0.3, delta_t=3, asso_func="iou", inertia=0.2, use_byte=False):
         """
         Sets key parameters for SORT
         """
@@ -217,7 +217,7 @@ class OCSort(object):
         self.use_byte = use_byte
         KalmanBoxTracker.count = 0
 
-    def update(self, output_results):
+    def update(self, output_results, kpts):
         """
         Params:
           output_results - a numpy array of detections in the format [[x1,y1,x2,y2,score],[x1,y1,x2,y2,score],...]
@@ -240,15 +240,18 @@ class OCSort(object):
         dets = np.concatenate((bboxes, np.expand_dims(scores, axis=-1)), axis=1)
         inds_low = scores > 0.1
         inds_high = scores < self.det_thresh
-        inds_second = np.logical_and(inds_low, inds_high)  # self.det_thresh > score > 0.1, for second matching
+        inds_second = np.logical_and(inds_low, inds_high)# self.det_thresh > score > 0.1, for second matching
         dets_second = dets[inds_second]  # detections for second matching
+        kpts_second = kpts[inds_second.bool()] if len(inds_second) > 0 else []
         remain_inds = scores > self.det_thresh
-        dets = dets[remain_inds]
+        dets = dets[remain_inds.tolist()]
+        kpts = kpts[remain_inds.tolist()]
 
         # get predicted locations from existing trackers.
         trks = np.zeros((len(self.trackers), 5))
         to_del = []
         ret = []
+        tracked_kpts = []
         for t, trk in enumerate(trks):
             pos = self.trackers[t].predict()[0]
             trk[:] = [pos[0], pos[1], pos[2], pos[3], 0]
@@ -257,7 +260,6 @@ class OCSort(object):
         trks = np.ma.compress_rows(np.ma.masked_invalid(trks))
         for t in reversed(to_del):
             self.trackers.pop(t)
-
 
         velocities = np.array(
             [trk.velocity if trk.velocity is not None else np.array((0, 0)) for trk in self.trackers])
@@ -274,7 +276,7 @@ class OCSort(object):
             dets, trks, self.iou_threshold, velocities, k_observations, self.inertia)
 
         for m in matched:
-            self.trackers[m[1]].update(dets[m[0], :])
+            self.trackers[m[1]].update(dets[m[0], :], kpts[m[0], :])
 
         """
             Second round of associaton by OCR
@@ -282,7 +284,7 @@ class OCSort(object):
         # BYTE association
         if self.use_byte and len(dets_second) > 0 and unmatched_trks.shape[0] > 0:
             u_trks = trks[unmatched_trks]
-            iou_left = self.asso_func(dets_second, u_trks)          # iou between low score detections and unmatched tracks
+            iou_left = self.asso_func(dets_second, u_trks)  # iou between low score detections and unmatched tracks
             iou_left = np.array(iou_left)
             if iou_left.max() > self.iou_threshold:
                 """
@@ -296,7 +298,7 @@ class OCSort(object):
                     det_ind, trk_ind = m[0], unmatched_trks[m[1]]
                     if iou_left[m[0], m[1]] < self.iou_threshold:
                         continue
-                    self.trackers[trk_ind].update(dets_second[det_ind, :])
+                    self.trackers[trk_ind].update(dets_second[det_ind, :], kpts_second[det_ind, :])
                     to_remove_trk_indices.append(trk_ind)
                 unmatched_trks = np.setdiff1d(unmatched_trks, np.array(to_remove_trk_indices))
 
@@ -318,18 +320,18 @@ class OCSort(object):
                     det_ind, trk_ind = unmatched_dets[m[0]], unmatched_trks[m[1]]
                     if iou_left[m[0], m[1]] < self.iou_threshold:
                         continue
-                    self.trackers[trk_ind].update(dets[det_ind, :])
+                    self.trackers[trk_ind].update(dets[det_ind, :], kpts[det_ind, :])
                     to_remove_det_indices.append(det_ind)
                     to_remove_trk_indices.append(trk_ind)
                 unmatched_dets = np.setdiff1d(unmatched_dets, np.array(to_remove_det_indices))
                 unmatched_trks = np.setdiff1d(unmatched_trks, np.array(to_remove_trk_indices))
 
         for m in unmatched_trks:
-            self.trackers[m].update(None)
+            self.trackers[m].update(None, np.empty((0, 17, 3)))
 
         # create and initialise new trackers for unmatched detections
         for i in unmatched_dets:
-            trk = KalmanBoxTracker(dets[i, :], delta_t=self.delta_t)
+            trk = KalmanBoxTracker(dets[i, :], kpts[i, :], delta_t=self.delta_t)
             self.trackers.append(trk)
 
         i = len(self.trackers)
@@ -345,25 +347,32 @@ class OCSort(object):
                 d = trk.last_observation[:4]
             if (trk.time_since_update < 1) and (trk.hit_streak >= self.min_hits or self.frame_count <= self.min_hits):
                 # +1 as MOT benchmark requires positive
-                ret.append(np.concatenate((d, [trk.id+1])).reshape(1, -1))
+                ret.append(np.concatenate((d, [trk.id + 1],)).reshape(1, -1))
+                tracked_kpts.append(trk.kpts.reshape(1, -1))
             i -= 1
             # remove dead tracklet
-            if(trk.time_since_update > self.max_age):
+            if (trk.time_since_update > self.max_age):
                 self.trackers.pop(i)
-        if(len(ret) > 0):
-            return np.concatenate(ret)
-        return np.empty((0, 5))
+        if (len(ret) > 0):
+            return np.concatenate(ret), np.concatenate(tracked_kpts)
 
-    def update_public(self, dets, cates, scores):
+        return np.empty((0, 5)), np.array(tracked_kpts)
+
+    def update_public(self, dets, cates, scores, kpts):
         self.frame_count += 1
 
         det_scores = np.ones((dets.shape[0], 1))
         dets = np.concatenate((dets, det_scores), axis=1)
 
-        remain_inds = scores > self.det_thresh
-        
-        cates = cates[remain_inds]
-        dets = dets[remain_inds]
+        remain_inds = (scores > self.det_thresh)
+        print("cates:", cates)
+        print("remain_inds:", remain_inds)
+        print("cates.shape:", cates.shape)
+        print("remain_inds:", remain_inds)
+        print("remain_inds.shape:", remain_inds.shape)
+        print("Scores:", scores)
+        cates = cates[remain_inds.tolist()]
+        dets = dets[remain_inds.tolist()]
 
         trks = np.zeros((len(self.trackers), 5))
         to_del = []
@@ -378,16 +387,16 @@ class OCSort(object):
         for t in reversed(to_del):
             self.trackers.pop(t)
 
-        velocities = np.array([trk.velocity if trk.velocity is not None else np.array((0,0)) for trk in self.trackers])
+        velocities = np.array([trk.velocity if trk.velocity is not None else np.array((0, 0)) for trk in self.trackers])
         last_boxes = np.array([trk.last_observation for trk in self.trackers])
         k_observations = np.array([k_previous_obs(trk.observations, trk.age, self.delta_t) for trk in self.trackers])
 
-        matched, unmatched_dets, unmatched_trks = associate_kitti\
-              (dets, trks, cates, self.iou_threshold, velocities, k_observations, self.inertia)
-          
+        matched, unmatched_dets, unmatched_trks = associate_kitti \
+            (dets, trks, cates, self.iou_threshold, velocities, k_observations, self.inertia)
+
         for m in matched:
-            self.trackers[m[1]].update(dets[m[0], :])
-          
+            self.trackers[m[1]].update(dets[m[0], :], kpts[m[0], :])
+
         if unmatched_dets.shape[0] > 0 and unmatched_trks.shape[0] > 0:
             """
                 The re-association stage by OCR.
@@ -402,18 +411,18 @@ class OCSort(object):
             iou_left = self.asso_func(left_dets_c, left_trks_c)
             iou_left = np.array(iou_left)
             det_cates_left = cates[unmatched_dets]
-            trk_cates_left = trks[unmatched_trks][:,4]
+            trk_cates_left = trks[unmatched_trks][:, 4]
             num_dets = unmatched_dets.shape[0]
             num_trks = unmatched_trks.shape[0]
             cate_matrix = np.zeros((num_dets, num_trks))
             for i in range(num_dets):
                 for j in range(num_trks):
                     if det_cates_left[i] != trk_cates_left[j]:
-                            """
-                                For some datasets, such as KITTI, there are different categories,
-                                we have to avoid associate them together.
-                            """
-                            cate_matrix[i][j] = -1e6
+                        """
+                            For some datasets, such as KITTI, there are different categories,
+                            we have to avoid associate them together.
+                        """
+                        cate_matrix[i][j] = -1e6
             iou_left = iou_left + cate_matrix
             if iou_left.max() > self.iou_threshold - 0.1:
                 rematched_indices = linear_assignment(-iou_left)
@@ -422,15 +431,15 @@ class OCSort(object):
                 for m in rematched_indices:
                     det_ind, trk_ind = unmatched_dets[m[0]], unmatched_trks[m[1]]
                     if iou_left[m[0], m[1]] < self.iou_threshold - 0.1:
-                          continue
-                    self.trackers[trk_ind].update(dets[det_ind, :])
+                        continue
+                    self.trackers[trk_ind].update(dets[det_ind, :], kpts[det_ind, :])
                     to_remove_det_indices.append(det_ind)
-                    to_remove_trk_indices.append(trk_ind) 
+                    to_remove_trk_indices.append(trk_ind)
                 unmatched_dets = np.setdiff1d(unmatched_dets, np.array(to_remove_det_indices))
                 unmatched_trks = np.setdiff1d(unmatched_trks, np.array(to_remove_trk_indices))
 
         for i in unmatched_dets:
-            trk = KalmanBoxTracker(dets[i,:])
+            trk = KalmanBoxTracker(dets[i, :], kpts[i, :])
             trk.cate = cates[i]
             self.trackers.append(trk)
         i = len(self.trackers)
@@ -443,25 +452,24 @@ class OCSort(object):
             if (trk.time_since_update < 1):
                 if (self.frame_count <= self.min_hits) or (trk.hit_streak >= self.min_hits):
                     # id+1 as MOT benchmark requires positive
-                    ret.append(np.concatenate((d, [trk.id+1], [trk.cate], [0])).reshape(1,-1)) 
+                    ret.append(np.concatenate((d, [trk.id + 1], [trk.cate], [0], trk.kpts)).reshape(1, -1))
                 if trk.hit_streak == self.min_hits:
                     # Head Padding (HP): recover the lost steps during initializing the track
                     for prev_i in range(self.min_hits - 1):
-                        prev_observation = trk.history_observations[-(prev_i+2)]
-                        ret.append((np.concatenate((prev_observation[:4], [trk.id+1], [trk.cate], 
-                            [-(prev_i+1)]))).reshape(1,-1))
-            i -= 1 
+                        prev_observation = trk.history_observations[-(prev_i + 2)]
+                        ret.append((np.concatenate((prev_observation[:4], [trk.id + 1], [trk.cate],
+                                                    [-(prev_i + 1)], trk.kpts))).reshape(1, -1))
+            i -= 1
             if (trk.time_since_update > self.max_age):
-                  self.trackers.pop(i)
-        
-        if(len(ret)>0):
+                self.trackers.pop(i)
+
+        if (len(ret) > 0):
             return np.concatenate(ret)
         return np.empty((0, 7))
 
-
 class OCSortManager(OCSort):
     def __init__(self, max_age=5, min_hits=3, iou_threshold=0.3, conf_thresh=0.4, delta_t=3, asso_func="iou",
-                 inertia=0.2, use_byte=False, reset_target_thresh=15, hand_raise_frames_thresh=3 , **kwargs):
+                 inertia=0.2, use_byte=False, reset_target_thresh=15, hand_raise_frames_thresh=3, show_height=480, show_width=640, **kwargs):
         """ OCSortManager, does tracking and detection
         Params:
             reset_target_thresh: int
@@ -480,18 +488,46 @@ class OCSortManager(OCSort):
         self.hand_raise_frames_thresh = hand_raise_frames_thresh
         self.hand_raise_frames = 0
 
+        # For drawing:
+        self.show_height=show_height
+        self.show_width = show_width
+        # Creating and Resizing display window:
+        cv2.namedWindow("Image", cv2.WINDOW_NORMAL)
+        cv2.resizeWindow("Image", self.show_width, self.show_height)
+
     def detector_predict(self, frame, augment=False, classes=None, agnostic_nms=False):
         return self.detector.predict(frame, augment=augment, conf_thres=self.det_thresh, classes=classes, iou_thres=self.iou_threshold, agnostic_nms=agnostic_nms)
 
     def update(self, frame, pred = None, augment=False, classes=None, agnostic_nms=False, target_only = False):
         if pred is None:
             pred = self.detector_predict(frame, augment=augment, classes=classes, agnostic_nms=agnostic_nms)
-        bounding_boxes = self.detector.extract_bounding_box_data(pred)
+        bounding_boxes, kpts = self.detector.extract_bounding_box_and_keypoint(pred,reshape_kpt=False)
+        #scores = bounding_boxes[:, 4]
+        #bounding_boxes = bounding_boxes[:, :-1]
+        #cates = np.ones(bounding_boxes.shape[0])
+        #nkpts = kpts.reshape(pred.shape[0], 17, 3)
+        if len(bounding_boxes) == 0:
+            bounding_boxes = np.zeros([0, 5])
+            #cates = np.ones(0)
+            #scores = np.zeros(0)
+        track, kpts = super().update(bounding_boxes, kpts)
+        #track = super().update_public(dets=bounding_boxes, cates=cates, scores=scores, kpts=kpts)
+        if target_only:
+            target_indices = track[:,-1]==self.target_id
+            #print("target_indices:", target_indices)
+            #print("track:", track)
+            #print("kpts:", kpts)
+            #print("target_indices.shape:", target_indices.shape)
+            #print("track.shape:", track.shape)
+            #print("kpts.shape:", kpts.shape)
+            track = track[target_indices]
+            kpts = kpts[target_indices]
 
-        track = super().update(np.asarray(bounding_boxes))
-        return track[track[:,-1]==self.target_id] if target_only else track
+        return track, kpts
 
-    def filtered_update(self, frame, augment=False, classes=None, agnostic_nms=False, kpt_conf_thresh=0.5):
+        #return track[track[:,-1]==self.target_id], kpts if target_only else track
+
+    def filtered_update(self, frame, pred = None, augment=False, classes=None, agnostic_nms=False, kpt_conf_thresh=0.5):
         """ Before running self.update, checks to see if anyone's raising their hand
         Params:
             frame: array
@@ -505,8 +541,11 @@ class OCSortManager(OCSort):
             we will track the target with the highest overall confidence
             Otherwise, None
         """
-        pred = self.detector_predict(frame, augment=augment, classes=classes, agnostic_nms=agnostic_nms)
-        points = self.detector.extract_keypoint_data(pred)
+        if pred is None:
+            pred = self.detector_predict(frame, augment=augment, classes=classes, agnostic_nms=agnostic_nms)
+        #bounding_boxes, points = self.detector.extract_bounding_box_and_keypoint(pred,)
+        kpts = self.detector.extract_keypoint_data(pred, reshape=False)
+        points = kpts.reshape(pred.shape[0], 17,3)
         # Filters prediction by only keeping those with their wrist keypoint above the shoulder keypoint only if
         # both keypoints are have high confidence (visibility)
         pred = pred[((points[:,5,1]>points[:,9,1]) & ((points[:,5,2]>kpt_conf_thresh) & (points[:,9,2]>kpt_conf_thresh))) | ((points[:,6,1]>points[:,10,1]) & ((points[:,6,2]>kpt_conf_thresh) & (points[:,10,2]>kpt_conf_thresh)))]
@@ -523,35 +562,37 @@ class OCSortManager(OCSort):
             #pred = max(pred, key = lambda x: (x[2]-x[0])*(x[3]-x[1])).unsqueeze(0)
 
             if self.hand_raise_frames >= self.hand_raise_frames_thresh:
-                track = self.update(frame, pred=pred)
+                track, kpts = self.update(frame, pred=pred)
                 #print("Tracked track: ", track)
                 #self.hand_raise_frames = 0
             else:
-                track = super().update(np.empty((0, 5)))
+                track, kpts = super().update(np.empty((0, 5)), kpts=kpts)
+                #track = super().update_public(dets=np.zeros([0,4]),cates=np.ones(0), scores=np.zeros(0), kpts=kpts)
 
             #track = self.update(frame, pred=pred)
 
         else:
             # Hand raise frames must be consecutive
             self.hand_raise_frames = 0
-            track = super().update(np.empty((0, 5)))  # Should I run tracking even though no target has been detected?
+            track, kpts = super().update(np.empty((0, 5)), kpts=kpts)  # Should I run tracking even though no target has been detected?
+            #track = super().update_public(dets=np.zeros([0,4]),cates=np.ones(0), scores=np.zeros(0), kpts=kpts)
 
         if len(track) > 0:
+            #print("track:", track)
             if self.target_id != int(track[0,-1]):
                 self.target_id = int(track[0,-1])
                 if self.target_id > self.max_target_id:
                     self.max_target_id = self.target_id
         #print("self.hand_raise_frames:", self.hand_raise_frames)
-        return track
+        return track, kpts
 
-    def smart_update(self, frame, pred = None, augment=False, classes=None, agnostic_nms=False):
+    def smart_update(self, frame, pred = None, augment=False, classes=None, agnostic_nms=False, kpt_conf_thresh=0.5):
         #Made to be called by the client, automatically determines whether to call filtered_update or update
         if self.target_id <= 0: # When there's no tracked target
-
-            out = self.filtered_update(frame=frame, augment=augment, classes=classes, agnostic_nms=agnostic_nms)
+            out, kpts = self.filtered_update(frame=frame, pred=pred, augment=augment, classes=classes, agnostic_nms=agnostic_nms, kpt_conf_thresh=kpt_conf_thresh)
             #print("m", m)
         else: # When there's a tracked target
-            out = self.update(frame=frame, pred=pred, augment=augment, classes=classes, agnostic_nms=agnostic_nms, target_only=True)
+            out, kpts = self.update(frame=frame, pred=pred, augment=augment, classes=classes, agnostic_nms=agnostic_nms, target_only=True)
             if len(out) == 0: # When the tracked target is not present on the screen
                 self.target_absent_frames += 1
                 self.largest_target_absent_frames = self.target_absent_frames if self.largest_target_absent_frames < self.target_absent_frames else self.largest_target_absent_frames
@@ -571,19 +612,20 @@ class OCSortManager(OCSort):
         #print("target Id = ", self.target_id)
         #print("max target Id = ", self.max_target_id)
 
-        return out
+        return out, kpts
 
-    def draw(self, prediction, img, show=None, save_dir = None):
-        #if len(prediction) !=
-        for det_index, (*xyxy, id) in enumerate(reversed(prediction[:,:6])):
-            plot_one_box(xyxy, img, label=(f'id: {str(int(id))}'), color=colors(int(id),True), line_thickness=2, kpt_label=False, steps=3, orig_shape=img.shape[:2])
-        if save_dir is not None:
-            self.save_frame_count += 1
-            file_name = os.path.join(save_dir, "{:08d}.jpg".format(self.save_frame_count))
-            cv2.imwrite(file_name, img)
+    def draw(self, prediction, img, show=None, save_dir=None, save=False, draw_kpts=False, kpts=None):
+        for det_index, (*xyxy, id) in enumerate(reversed(prediction[:, :5])):
+            plot_one_box(xyxy, img, label=(f'id: {str(int(id))}'), color=colors(int(id), True), line_thickness=2,
+                         kpt_label=draw_kpts, steps=3, orig_shape=img.shape[:2], kpts=kpts[det_index])
+        if save:
+            if save_dir is not None:
+                self.save_frame_count += 1
+                file_name = os.path.join(save_dir, "{:08d}.jpg".format(self.save_frame_count))
+                cv2.imwrite(file_name, img)
         if show is not None:
             cv2.imshow("Image", img)
-            cv2.waitKey(show)
+            cv2.waitKey(1)
 
     def reset_trackers(self):
         self.trackers = []

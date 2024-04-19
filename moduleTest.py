@@ -4,15 +4,14 @@ import numpy as np
 import wave
 import torch
 from ultralytics import YOLO
-from Visual.detection import FaceRecognition
-from Whisper_speaker_diarization.whisper import Whisper
-
+from client.Visual import FaceRecognition
+from client.Whisper_speaker_diarization import Whisper
 
 
 def main():
-    device = 0 if torch.cuda.is_available() else 'cpu'
+    device = 2 if torch.cuda.is_available() else 'cpu'
     # load SpeechRecognition Module
-    whisper = Whisper(whisper_model="large-v2",gpu_id=1)
+    whisper = Whisper(whisper_model="large-v2", gpu_id=2)
     print("Whisper Initialized")
     # Load vision Module
     yoloModel = YOLO('yolov8s.pt')
@@ -37,9 +36,10 @@ def main():
     while True:
         wave_output_filename = f'./output/speech/test{count}.wav'
         p = pyaudio.PyAudio()
+        tempRate = int(p.get_device_info_by_index(0).get('defaultSampleRate'))
         stream = p.open(format=audio_format,
                         channels=channels,
-                        rate=sample_rate,
+                        rate=tempRate,
                         input=True,
                         frames_per_buffer=chunk_size)
 
@@ -52,7 +52,7 @@ def main():
 
         time_frame_count = 0
         silence_start_time = 0
-        #frame_count = 0
+        # frame_count = 0
 
         # Store the detected Person list
         detected_person = None
@@ -60,14 +60,14 @@ def main():
             # analyse video frame
             success, frame = cap.read()
             if success:
-                results = yoloModel.track(frame, conf=0.5, persist=True, tracker='bytetrack.yaml')
-                #if frame_count % 90 == 0:
+                results = yoloModel.track(frame, conf=0.5, persist=True, tracker='bytetrack.yaml',verbose=False)
+                # if frame_count % 90 == 0:
                 detected_person, faces, prompt = face_r.recognition(frame)
                 # print(f'Here is the prompt{prompt}')
                 frame = face_r.draw_on_with_name(frame, faces, detected_person)
 
                 cv2.imshow("InsightFace Inference", frame)
-                #frame_count += 1
+                # frame_count += 1
                 if cv2.waitKey(1) & 0xFF == ord("q"):
                     break
 
@@ -116,8 +116,11 @@ def main():
         wf.writeframes(b''.join(frames))
         wf.close()
         count += 1
-        whisper.speech_to_text(wave_output_filename,'./output/transcript/transcript_result.csv', "en", detected_person)
-
+        prompt = whisper.speech_to_text(wave_output_filename, './output/transcript/transcript_result.csv', "en", detected_person)
+        # with open("pipe_py_to_cpp", "w") as pipeOut:
+        #             print("Sending to C++ from Vision:", prompt)
+        #             pipeOut.write(prompt + "\n")
+        #             pipeOut.flush()  # Ensure the message will send successfully
 
 if __name__ == '__main__':
     main()

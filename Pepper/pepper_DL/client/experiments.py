@@ -9,23 +9,23 @@ import argparse
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.realpath(__file__)), "models", "ocsort"))
 from trackers.ocsort.ocsort import OCSortManager
 
-def initiate_oc(experimental=False, verbose = True, device="cuda"):
-    return Client(model="ocsort", image_size=[640, 640], device=device, verbose=verbose, hand_raise_frames_thresh=3, experimental=experimental,)
+def initiate_oc(experimental=False, verbose = True, device="cuda", hand_raise_thresh=3, **kwargs):
+    return Client(model="ocsort", image_size=[640, 640], device=device, verbose=verbose, hand_raise_frames_thresh=hand_raise_thresh, experimental=experimental, **kwargs)
 
-def initiate_bot(experimental=False, verbose=True, device="cuda"):
+def initiate_bot(experimental=False, verbose=True, device="cuda", hand_raise_thresh=3):
     # BoTSORT default params
     args = bot_sort_make_parser().parse_args()
     args.ablation = False
     args.mot20 = not args.fuse_score
 
     return Client(model="botsort", image_size=[640, 640], device=device, verbose=verbose, experimental=experimental, args=args,
-               hand_raise_frames_thresh=3)
+               hand_raise_frames_thresh=hand_raise_thresh)
 
-def initiate_byte(experimental=False, verbose=True, device="cuda"):
+def initiate_byte(experimental=False, verbose=True, device="cuda", hand_raise_thresh=3):
     args = byte_track_make_parser().parse_args()
 
     return Client(model="bytetrack", device=device, verbose=verbose, experimental=experimental, args=args,
-               hand_raise_frames_thresh=3)
+               hand_raise_frames_thresh=hand_raise_thresh)
 
 
 def oc_exp(draw = True, trial="distance", distance="1m", attempt_no=1, verbose=False, clear_img=False, clear_log=False):
@@ -94,11 +94,11 @@ def byte_exp(draw = True, trial="distance", distance="1m", attempt_no=1, verbose
     print("Time from detection to end condition:", data["behaviour_time"])
     print("FPS:", data["frames"] /data["time"])
 
-def ocfollow(verbose = True, device="cuda"):
-    c = initiate_oc(verbose = verbose, device=device)
+def ocfollow(verbose = True, device="cuda", hand_raise_thresh=3, draw=False, show=False, **kwargs):
+    c = initiate_oc(verbose = verbose, device=device, hand_raise_thresh=hand_raise_thresh, **kwargs)
     #c = Client(image_size=[640, 640], device="cpu", max_age=60, verbose=True)
     # Main follow behaviour:
-    c.follow_behaviour()
+    c.follow_behaviour(draw=draw, show=show)
     # Must call
     c.shutdown()
 
@@ -168,7 +168,7 @@ def livestream_camera_ocsort():
 def get_image_pred_test(client, image_no=60):
     start_time = time.time()
     for i in range(image_no):
-        pred, img = client.predict(img=None, draw=True)
+        pred, img = client.predict(img=None, draw=False, show=False)
         #print(pred.shape)
         end_time = time.time() - start_time
     print(f"It took {str(end_time)} seconds to receive {str(image_no)} images and process them through YOLO-Pose + {client.model_name}. This means we were able to receive images from Pepper to server to client at {str(image_no/end_time)} FPS!")
@@ -284,5 +284,25 @@ if __name__ == "__main__":
     #m(**args)
 
     # Run deep learning behaviour for end-user
-    ocfollow(device="cpu")
-    #oc_exp
+    
+    # Run with CPU
+    #ocfollow(device="cpu")
+    
+    # Run with GPU
+    #ocfollow(device="cuda")
+    
+    # Run with GPU while showing footage
+    #ocfollow(device="cuda", draw=True, hand_raise_thresh=1, show=True, walk_speed_modifier=1.1)
+
+    # Run with GPU while not showing footage
+    #ocfollow(device="cuda", draw=False, hand_raise_thresh=1, show=False, walk_speed_modifier=1.1)
+
+    # Show what YOLO-Pose is seeing
+    ocfollow(device="cuda", draw=True, hand_raise_thresh=1, show=True, walk_speed_modifier=1.1, visualise_detector=True)
+
+    # Don't show what YOLO-Pose is seeing
+    #ocfollow(device="cuda", draw=True, hand_raise_thresh=1, show=True, walk_speed_modifier=1.1, visualise_detector=False)
+
+    # FPS Test
+    #client = initiate_oc()
+    #get_image_pred_test(client, image_no=60)

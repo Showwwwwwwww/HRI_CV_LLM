@@ -28,7 +28,7 @@ import numpy as np
 import qi
 import soundfile as sf
 #import speech_recognition as sr
-import apiai
+#import apiai
 
 
 class DialogModule(object):
@@ -67,33 +67,12 @@ class DialogModule(object):
 
             # record wav and do Google ASR
 
-    def Whisper(self):
-        # ----------- Recording audio------------#
-        # ask for the front microphone signal sampled at 16kHz
-        # if you want the 4 channels call setClientPreferences(self.module_name, 48000, 0, 0)
-        self.audio_service.setClientPreferences(self.module_name, 16000, 3, 0)
-        self.audio_service.subscribe(self.module_name)
-
-        while self.isProcessingDone == False:
-            time.sleep(1)
-
-        self.audio_service.unsubscribe(self.module_name)
-
-        # record in a wav format that Google ASR understands
-        data, samplerate = sf.read(self.rawfile, channels=1, samplerate=16000, subtype='PCM_16')
-        sf.write(self.wavfile, data, samplerate)
-        print "The recording is saved here: " + self.wavfile
-
-        # We keep allow the Whisper to Detect that the audio recording, and we can start to Transcripe it
-        
-        pass
-
     def ASR(self):
         # ask for the front microphone signal sampled at 16kHz
         # if you want the 4 channels call setClientPreferences(self.module_name, 48000, 0, 0)
+
         self.audio_service.setClientPreferences(self.module_name, 16000, 3, 0)
         self.audio_service.subscribe(self.module_name)
-
         while self.isProcessingDone == False:
             time.sleep(1)
 
@@ -104,25 +83,25 @@ class DialogModule(object):
         sf.write(self.wavfile, data, samplerate)
         print "The recording is saved here: " + self.wavfile
 
-        # Google ASR
-        r = sr.Recognizer()
-        audiofile = sr.AudioFile(self.wavfile)
+        # # Google ASR
+        # r = sr.Recognizer()
+        # audiofile = sr.AudioFile(self.wavfile)
+        #
+        # with audiofile as source:
+        #     r.adjust_for_ambient_noise(source)
+        #     audio = r.record(source)
+        #
+        # try:
+        #     asr = r.recognize_google(audio)
+        #     print "This is what Pepper thinks you said: " + asr
+        # except sr.UnknownValueError:
+        #     asr = ""
+        #     print ("Google Speech Recognition could not understand audio")
+        # except sr.RequestError as e:
+        #     asr = ""
+        #     print "Could not request results from Google Speech Recognition service; {0}".format(e)
 
-        with audiofile as source:
-            r.adjust_for_ambient_noise(source)
-            audio = r.record(source)
-
-        try:
-            asr = r.recognize_google(audio)
-            print "This is what Pepper thinks you said: " + asr
-        except sr.UnknownValueError:
-            asr = ""
-            print ("Google Speech Recognition could not understand audio")
-        except sr.RequestError as e:
-            asr = ""
-            print "Could not request results from Google Speech Recognition service; {0}".format(e)
-
-        return asr
+        #return asr
 
     # pass on asr transcript to Google DialogFlow and receive the response
     def DialogFlow(self, asr):
@@ -182,8 +161,9 @@ if __name__ == "__main__":
     app.session.registerService("DialogModule", MyDialogModule)
     # ASR
     print ("Start listening...")
-    asr = MyDialogModule.ASR()
-    # Dialog Flow
-    reply = MyDialogModule.DialogFlow(asr)
-    # Text-to-speech
-    MyDialogModule.TTS(reply)
+    MyDialogModule.ASR()
+    # asr = MyDialogModule.ASR()
+    # # Dialog Flow
+    # reply = MyDialogModule.DialogFlow(asr)
+    # # Text-to-speech
+    # MyDialogModule.TTS(reply)

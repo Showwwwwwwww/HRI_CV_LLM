@@ -6,6 +6,7 @@ import time
 import requests
 import io
 import base64
+import traceback
 from PIL import Image
 
 # SORT:
@@ -39,7 +40,7 @@ models = {
 
 class Client:
 
-    def __init__(self, model="ocsort", address='http://localhost:5000', verbose=False, experimental=False, walk_speed_modifier=0.9,**kwargs):
+    def __init__(self, model="ocsort", address='http://localhost:5000', verbose=False, experimental=False, walk_speed_modifier=0.9, visualise_detector = True, **kwargs):
         self.address = address
         self.robot_actions = {
             "walkToward": self.walkToward,
@@ -59,6 +60,8 @@ class Client:
         self.dl_model = models[model](**kwargs)
         print(model, " loaded successfully!")
         self.walk_speed_modifier = walk_speed_modifier
+        self.tracking = False
+        self.visualise_detector = visualise_detector
         self.experimental = experimental
         if experimental:
             self.start_time = 0
@@ -77,44 +80,52 @@ class Client:
             cv2.imwrite(f"images/{save_name}.png" if path is None else os.path.join(path, save_name), img)
         return img
 
-    def predict(self, img, draw=True, save_dir = None):
+    def predict(self, img, draw=True, save_dir = None, show=False):
         if img is None:
             img = self.get_image()
         # Shape of pred: number of tracked targets x 5
         # where 5 represents: (x1, y1, x2, y2, id)
-        pred = self.dl_model.smart_update(img)
+        detector_output = self.dl_model.detector_predict(img)
+        pred, kpts = self.dl_model.smart_update(img, detector_output)
 
         if draw:
-            self.draw(pred, img, save_dir="images" if save_dir is None else save_dir)
+            if not self.tracking and self.visualise_detector:
+                self.dl_model.detector.draw(detector_output, np.ascontiguousarray(img), show=show)
+            else:
+                self.draw(pred, img, save_dir="images" if save_dir is None else save_dir, show=show, kpts=kpts)
+
         return pred, img
 
-    def draw(self, prediction, img, show=None, save_dir=None):
-        self.dl_model.draw(prediction, np.ascontiguousarray(img), show=show, save_dir=save_dir)
+    def draw(self, prediction, img, show=None, save_dir=None, save=False, kpts=None):
+        self.dl_model.draw(prediction, np.ascontiguousarray(img), show=show, save_dir=save_dir, kpts=kpts, draw_kpts=kpts is not None)
 
-    def follow_behaviour(self):
+    def follow_behaviour(self, draw=False, show=False, spin_speed=0.1):
         self.stop()
         try:
             while True:
                 self.rotate_head_abs(verbose=False)
                 ctarget_id = self.dl_model.target_id
-                if self.dl_model.target_id != self.dl_model.max_target_id:
-                    self.spin(speed=0.1)
-                pred, img = self.predict(img=None, draw=False)
+                #if self.dl_model.target_id != self.dl_model.max_target_id:
+                #    self.spin(speed=spin_speed)
+                pred, img = self.predict(img=None, draw=draw, show=show)
                 #print("Prediction:", pred)
                 if ctarget_id == 0:
                     if ctarget_id != self.dl_model.target_id :
                         self.stop()
+                        self.tracking = True
                         self.say("Target detected")
 
                 else:
                     if ctarget_id != self.dl_model.target_id:
                         self.stop()
+                        self.tracking = False
                         self.say("Target Lost")
                 #print("Length of pred: ", len(pred))
                 self.center_target(pred, img.shape, )
                 self.last_box = pred
         except Exception as e:
-            print(e)
+            #print(e)
+            traceback.print_exc()
             self.shutdown()
 
     # Only use if experimental is True
@@ -131,7 +142,7 @@ class Client:
                 self.rotate_head_abs(verbose=False)
                 ctarget_id = self.dl_model.target_id
                 st = time.time()
-                pred, img = self.predict(img=None, draw=False)
+                pred, img = self.predict(img=None, draw=draw)
                 data["time"] = data["time"] + time.time() - st
                 data["frames"] = data["frames"] + 1
                 if draw:
