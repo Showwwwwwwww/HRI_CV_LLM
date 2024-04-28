@@ -23,8 +23,8 @@ import tempfile
 import soundfile as sf
 
 parser = argparse.ArgumentParser(description="Please enter Pepper's IP address (and optional port number)")
-parser.add_argument("--ip", type=str, nargs='?', default="192.168.1.102")
-# IP on router: 192.168.1.102
+parser.add_argument("--ip", type=str, nargs='?', default="192.168.0.52")
+# IP on router: "192.168.0.52",
 # IP on router: 169.254.220.108
 parser.add_argument("--port", type=int, nargs='?', default=9559)
 args = parser.parse_args()
@@ -74,20 +74,32 @@ life_service.setAutonomousAbilityEnabled("All", False)
 # Start Flask server
 app = Flask(__name__)
 
+audio_count = 0
 @app.route("/audio/recording", methods=["GET"])
 def send_recording():
     try:
+        global audio_count
         # startProcessing return data and samplerate
         audio_data, samplerate = audio_manager.startProcessing()
-        
+
         # create a temp file to save the audio data
         with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmpfile:
             sf.write(tmpfile.name, audio_data, samplerate)
             # reopen it and save
-            return send_file(tmpfile.name, as_attachment=True, attachment_filename="audio.wav", mimetype="audio/wav")
+            attachment_filename = "audio" + str(audio_count) + ".wav"
+            audio_count += 1
+
+            return send_file(tmpfile.name, as_attachment=True, attachment_filename=attachment_filename, mimetype="audio/wav")
     except Exception as e:
         # return error message when getting error
         return jsonify({'error': str(e)}), 500
+    
+@app.route('/audio/volume', methods=['GET'])
+def get_volume():
+    # Call the getSound method to retrieve the current volume
+    volume = audio_manager.getSound()
+    # Return the volume level as a JSON response
+    return jsonify({"volume": volume})
 
 @app.route("/image/send_image", methods=["POST"])
 def send_image():
@@ -98,6 +110,7 @@ def send_image():
     img.save(rawBytes, "JPEG")
     rawBytes.seek(0)
     img_base64 = base64.b64encode(rawBytes.read())
+    print("Sending Message")
     return jsonify({
         'msg': 'success',
         'img': str(img_base64),
@@ -129,6 +142,7 @@ def say():
     speech_manager.say(request.data)
     return jsonify({
         "msg": "success"})
+
 
 
 @app.route("/setup/end", methods=["POST"])

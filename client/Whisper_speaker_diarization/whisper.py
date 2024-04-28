@@ -116,7 +116,7 @@ class Whisper:
                 chunk["text"] = segment_chunk.text
                 segments.append(chunk)
                 i += 1
-            print("transcribe audio done with fast whisper")
+            #print("transcribe audio done with fast whisper")
             if len(segments) == 0:
                 print("Nothing containing in this audio")
                 return
@@ -138,7 +138,7 @@ class Whisper:
             for i, segment in enumerate(segments):
                 embeddings[i] = segment_embedding(segment)
             embeddings = np.nan_to_num(embeddings)
-            print(f'Embedding shape: {embeddings.shape}')
+            #print(f'Embedding shape: {embeddings.shape}')
 
             # if there is no target person who has be detected in this conversation, let the algorithm evaluate by
             # itself to find the #spekears
@@ -184,7 +184,7 @@ class Whisper:
                         segments[i]["speaker"] = 'SPEAKER ' + joined_person[0]
                         # segments[i]["speaker"] = 'SPEAKER ' + str(i + 1)
 
-            txtFilename = "./output/llamaData/input.txt"
+            txtFilename = "./output/exchange_information/py_to_cpp.txt"
             # Make output
             objects = {
                 'Start': [],
@@ -203,14 +203,14 @@ class Whisper:
                         objects['Text'].append(text)
                         text = ''
                 text = text + segment["speaker"] + ' say: ' + '\'' + segment["text"] + '\'' + '     '
-                with open(txtFilename, 'a') as file:
-                    file.write(text)
+                # with open(txtFilename, 'a') as file:
+                #     file.write(text)
 
             tempValue = 0 if i == 0 else i-1
-            print(f"i is. {i}")
-            print(f"tempValue is , {tempValue}")
-            print(f"segments is , {segments}")
-            print(f"objects is , {objects}")
+            #print(f"i is. {i}")
+            #print(f"tempValue is , {tempValue}")
+            #print(f"segments is , {segments}")
+            #print(f"objects is , {objects}")
             objects['End'].append(str(convert_time(segments[tempValue]["end"])))
             objects['Text'].append(text)
 
