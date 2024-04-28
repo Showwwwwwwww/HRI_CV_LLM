@@ -62,6 +62,7 @@ std::string ReadAndClearFile(const std::string &filename) {
     // Open the file and read its contents
     std::ifstream inFile(filename);
     std::string content((std::istreambuf_iterator<char>(inFile)), std::istreambuf_iterator<char>());
+    //std::cout << "ths is content: " << content << "\n"<< std::endl;
     inFile.close();
 
     // Clear the file
@@ -105,19 +106,35 @@ void WriteToFile(const std::string& filename,  const std::string output) {
 
 
 // Write to cutomized the output response which will send to Pepper
-std::string extractSentence(const std::string& input) {
+std::string extractSentence(const std::string& input,const std::string& filename) {
     // Find the starting position of "Bob:"
     size_t start = input.find("Bob: ");
     // Find the starting position of "\n User:"
     size_t end = input.find("User:");
 
-    // Ensure both substrings are found and "Bob:" comes before "\n User:"
-    if (start != std::string::npos && end != std::string::npos && start < end) {
-        // Adjust start position to the end of "Bob: "
-        start += 5; // Length of "Bob: " is 5
-        // Extract the content between
-        return input.substr(start, end - start);
+//    // Ensure both substrings are found and "Bob:" comes before "\n User:"
+//    if (start != std::string::npos && end != std::string::npos && start < end) {
+//        // Adjust start position to the end of "Bob: "
+//        start += 5; // Length of "Bob: " is 5
+//        // Extract the content between
+//        return input.substr(start, end - start);
+//    }
+    if (start != std::string::npos){
+        if (end != std::string::npos){
+            std::string result = input.substr(start + 5,end);
+             std::cout << "ths is response: " << result << "\n"<< std::endl;
+             WriteToFile(filename,result);
+             return result;
+        }
+        else{
+        std::string result = input.substr(start + 5);
+         WriteToFile(filename,result);
+         return result;
+         }
+
     }
+
+    std::cout << "Bob not find in the string\n"<< std::endl;
 
     // Return an empty string if the pattern is not found
     return "empty result";
@@ -828,18 +845,21 @@ int main(int argc, char ** argv) {
                 // printf("`%d`", candidates_p.size);
 
                 // std::string outFilename = "in_output/output.txt";
-                //std::string outFilename = "../../output/llamaData/output.txt";
-                std::string response = extractSentence(responseTokens);
-                //WriteToFile(outFilename,response);
+//                std::string outFilename = "./../../output/exchange_information/cpp_to_py.txt";
+//                std::string response = extractSentence(responseTokens);
+//                WriteToFile(outFilename,responseTokens);
+                //std::cout<< "This is the original token  " << responseTokens <<" \n"<< std::endl;
+                //std::cout<< "This is the adjusted response from llama   " << response <<" \n"<< std::endl;
                 //WriteToFile(outFilename,responseTokens);
                 //responseTokens = "";
-                std::ofstream outPipe("./../../pipes/pipe_cpp_to_py"); // Stores in Root Directory
-                if (outPipe.is_open()) {
-                    outPipe << response << std::endl;
-                    outPipe.close();
-                    }
-                saveConversation(response); // Write response into the csv file to record
-                
+//                std::ofstream outPipe("./../../client/pipe_cpp_to_py"); // Stores in Root Directory
+//                if (outPipe.is_open()) {
+//                    outPipe << response << std::endl;
+//                    //std::cout << response<< std::endl;
+//                    outPipe.close();
+//                    }
+                //saveConversation(response); // Write response into the csv file to record
+
 
                 if (grammar != NULL) {
                     llama_grammar_accept_token(ctx, grammar, id);
@@ -977,29 +997,41 @@ int main(int argc, char ** argv) {
                     //buffer += line;
                 //} while (another_line);
 
+                std::string outFilename = "./../../output/exchange_information/cpp_to_py.txt";
+                std::string response = extractSentence(responseTokens,outFilename);
+//                if (response != 'empty result'){
+//                    WriteToFile(outFilename,response);}
+                //std::cout<< "This is the original token  " << responseTokens <<" \n"<< std::endl;
+                responseTokens = "";
 
                 //std::string filename = "in_output/input.txt";
-                // std::string filename = "../../output/llamaData/input.txt";
-                // bool another_line = true;
-                // responseTokens = "";
-                // while (another_line) {
-                //     std::this_thread::sleep_for(std::chrono::seconds(1));  // wait for 1 second
-
-                //     std::string content = ReadAndClearFile(filename);
-                //     if (!content.empty()) {
-                //         another_line = false;
-                //         buffer += content;
-                //     }
-                // }
-                std::string content;
-                std::ifstream inPipe("./../../pipes/pipe_py_to_cpp"); // Receive the transcripr from whisper
-                getline(inPipe, content);
-                buffer+=content;
-                inPipe.close();
+                 std::string filename = "./../../output/exchange_information/py_to_cpp.txt";
+                 bool another_line = true;
+                 while (another_line) {
+                     std::this_thread::sleep_for(std::chrono::seconds(1));  // wait for 1 second
+                     std::string content = ReadAndClearFile(filename);
+                     if (!content.empty()) {
+                         another_line = false;
+                         buffer += content;
+                     }
+                 }
+//                std::string content;
+//                content = "";
+//                std::string py_to_cpp_path = "./../../client/test";
+//                std::cout << "Start receiving infor" << std::endl;
+//               while(content.length() == 0){
+//
+//               std::ifstream inPipe(py_to_cpp_path); // Receive the transcripr from whisper
+//                   getline(inPipe,content);
+//                   buffer += content;
+//                   std::cout << "Receove from py: "<< content << std::endl;
+//                   //inPipe.clear();
+//                   inPipe.close();
+//               }
 
                 // Inside the code block where you want to save the conversation
-                saveConversation(content);
-                
+                //saveConversation(content);
+
 
                 // done taking input, reset color
                 console::set_display(console::reset);
@@ -1015,7 +1047,7 @@ int main(int argc, char ** argv) {
                     }
 
                     LOG("buffer: '%s'\n", buffer.c_str());
-
+                    std::cout << "Buffer is " << buffer <<std::endl;
                     const size_t original_size = embd_inp.size();
 
                     // instruct mode: insert instruction prefix
