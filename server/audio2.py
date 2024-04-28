@@ -15,7 +15,8 @@ class AudioManager2(object):
         # Enable energy input compution 
         self.audio_service.enableEnergyComputation()
         # Audio recording setting
-        self.threshold = 500
+
+        self.threshold = 200
         self.silence_duration = 2
         self.is_recording = False
         self.last_sound_time = None
@@ -24,12 +25,12 @@ class AudioManager2(object):
         self.channels = 3  # use front microphone
         self.isProcessingDone = False
         # Audio file setting 
-        self.tmppath = ""
+        self.tmppath = "./recordings/"
         self.recording_count = 0
         self.wavfile = self.tmppath + "recording" + str(self.recording_count) + ".wav"
         self.rawfile = self.tmppath + "rawrecording" + str(self.recording_count) + ".raw"
         self.framesCount = 0
-        self.nbOfFramesToProcess =50
+        self.nbOfFramesToProcess =30
         self.isRecording = False
     
     def processRemote(self, nbOfChannels, nbOfSamplesByChannel, timeStamp, inputBuffer):

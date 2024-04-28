@@ -112,25 +112,21 @@ std::string extractSentence(const std::string& input,const std::string& filename
     // Find the starting position of "\n User:"
     size_t end = input.find("User:");
 
-//    // Ensure both substrings are found and "Bob:" comes before "\n User:"
-//    if (start != std::string::npos && end != std::string::npos && start < end) {
-//        // Adjust start position to the end of "Bob: "
-//        start += 5; // Length of "Bob: " is 5
-//        // Extract the content between
-//        return input.substr(start, end - start);
-//    }
     if (start != std::string::npos){
-        if (end != std::string::npos){
-            std::string result = input.substr(start + 5,end);
-             std::cout << "ths is response: " << result << "\n"<< std::endl;
-             WriteToFile(filename,result);
-             return result;
-        }
-        else{
-        std::string result = input.substr(start + 5);
-         WriteToFile(filename,result);
-         return result;
-         }
+            WriteToFile(filename,input);
+            std::cout << "The resposne: " << input << "\n Has successfully pass to the txt file"<< std::endl;
+            return input;
+//        if (end != std::string::npos){
+//            std::string result = input.substr(start + 5,end);
+//             std::cout << "ths is response: " << result << "\n"<< std::endl;
+//             WriteToFile(filename,result);
+//             return result;
+//        }
+//        else{
+//        std::string result = input.substr(start + 5);
+//         WriteToFile(filename,result);
+//         return result;
+//         }
 
     }
 
@@ -1001,6 +997,7 @@ int main(int argc, char ** argv) {
                 std::string response = extractSentence(responseTokens,outFilename);
 //                if (response != 'empty result'){
 //                    WriteToFile(outFilename,response);}
+                //WriteToFile(outFilename,responseTokens);
                 //std::cout<< "This is the original token  " << responseTokens <<" \n"<< std::endl;
                 responseTokens = "";
 
@@ -1008,6 +1005,7 @@ int main(int argc, char ** argv) {
                  std::string filename = "./../../output/exchange_information/py_to_cpp.txt";
                  bool another_line = true;
                  while (another_line) {
+                     //std::cout<< "Get content from PY " <<" \n"<< std::endl;
                      std::this_thread::sleep_for(std::chrono::seconds(1));  // wait for 1 second
                      std::string content = ReadAndClearFile(filename);
                      if (!content.empty()) {

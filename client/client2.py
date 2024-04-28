@@ -11,6 +11,7 @@ from Whisper_speaker_diarization.whisper import Whisper
 import torch
 import traceback
 import time
+import re
 class Client:
 
     def __init__(self, address='http://localhost:5001', device=0, **kwargs):
@@ -22,11 +23,11 @@ class Client:
         self.device = device if torch.cuda.is_available() else 'cpu'
         print('Using device: {}'.format(self.device))
         # Initialize the Whisper,  FaceRecognition, and Yolo models
-        self.whisper = Whisper(gpu_id=self.device) # Use default medium model
-        #self.whisper = Whisper(whisper_model="large-v2", gpu_id=self.device)
+        #self.whisper = Whisper(gpu_id=self.device) # Use default medium model
+        self.whisper = Whisper(whisper_model="large-v2", gpu_id=self.device)
         print('Whisper initialized')
-        #self.face_recognition = FaceRecognition(face_db='./database/face_db', gpu_id=self.device)
-        self.face_recognition = FaceRecognition(face_db='./database/face_db', gpu_id=0)
+        self.face_recognition = FaceRecognition(face_db='./database/face_db', gpu_id=self.device)
+        #self.face_recognition = FaceRecognition(face_db='./database/face_db', gpu_id=0)
         print('face_recognition initialized')
         self.yolo = YOLO('yolov8s.pt')
         self.yolo.to(device=self.device)
@@ -41,6 +42,7 @@ class Client:
         """
         
         """
+        self.clear_audio_files()
         try:
             while True:
                 # Module Work --> Send all the transcript to llama
@@ -48,12 +50,12 @@ class Client:
                 while True: # If have person has detected in the camera, we start to record the conversation
                     img = self.get_image(save=True, path="./output", save_name="Pepper_Image")
                     prompt, detected_person,faces = self.process_image(img)
-                    if detected_person and self.sound_exceed_threshold: # If we detected person and the input volume exceed the threshold, we can start to record the conversation
+                    if detected_person and self.sound_exceed_threshold(): # If we detected person and the input volume exceed the threshold, we can start to record the conversation
                         print("Detected person ", detected_person)
                         break
+                path_to_cpp = '/home/shuo/robot_research/output/exchange_information/py_to_cpp.txt'
                 if len(prompt) > 0: # If the new recognized person has detected, the prompt will be generated
                     print("Prompt ", prompt)
-                    path_to_cpp = "./../output/exchange_information/py_to_cpp.txt"
                     with open(path_to_cpp, "w") as f:
                         f.write(prompt)
                     # with open("pipe_py_to_cpp", "w") as pipeOut:
@@ -65,7 +67,6 @@ class Client:
                 transcript = self.process_audio(csv_path='./../output/transcript/transcript_result.csv',
                                                 detected_person=detected_person)
                 if transcript:
-                    path_to_cpp = "./../output/exchange_information/py_to_cpp.txt"
                     with open(path_to_cpp, "w") as f:
                         f.write(transcript)
                     print(transcript)
@@ -81,13 +82,17 @@ class Client:
                     response = ""
                     try:
                         count = 0
-                        path_to_py = "./../output/exchange_information/cpp_to_py.txt"
+                        path_to_py = '/home/shuo/robot_research/output/exchange_information/cpp_to_py.txt'
                         while len(response) == 0:
-                            with open(path_to_py, "r") as f:
-                                print("Read from", path_to_py)
-                                response = f.read()
-                                if len(response) > 0:
-                                    break
+                            response = self.process_response_llama(path_to_py)
+                            if len(response) > 0:
+                                print(f'response when broke: {response}')
+                                break
+                            # with open(path_to_py, "r") as f:
+                            #     print("Read from", path_to_py)
+                            #     response = f.read()
+                            #     if len(response) > 0:
+                            #         break
                             # # Receive the Response from llama
                             # with open("pipe_cpp_to_py", "r") as pipeIn: # Waiting and reading the response from cpp(llama)
                             #     response = pipeIn.readline().strip()
@@ -98,9 +103,9 @@ class Client:
                             pass
                         if response != self.previous_response:
                             self.say(response)
-                            print('response: ', response)
+                            #print('response: ', response)
                             self.previous_response = response
-                        print(count)
+                        #print(count)
                         count += 1
                     except Exception as e:
                         print(f"An error occured whic receiving the response from C++{e}")
@@ -116,7 +121,10 @@ class Client:
             person_joined = False 
             while not person_joined: # If have person has detected in the camera, we start to record the conversation
                 prompt, detected_person,faces = self.process_image()
-                person_joined = len(faces) > 0 # Have person face to camera 
+                person_joined = len(faces) > 0 # Have person face to camera
+
+
+
     # -------------------------------------------------------------------------------------------------------------------
     # Information Process  ###################################################################################################
     # -------------------------------------------------------------------------------------------------------------------
@@ -175,6 +183,43 @@ class Client:
 
             if abs(horizontal_ratio) <= stop_threshold:
                 self.approach_target(box, img_shape, vertical_ratio)
+
+    def clear_audio_files(self):
+        path = './../server/recordings'
+        # 检查目录中的每个文件
+        for filename in os.listdir(path):
+            # 检查文件扩展名是否是.wav或.raw
+            if filename.endswith('.wav') or filename.endswith('.raw'):
+                # 构建完整的文件路径
+                file_path = os.path.join(path, filename)
+                # 删除文件
+                os.remove(file_path)
+                print(f"Deleted {file_path}")
+
+    def process_response_llama(self, file_path):
+
+
+        with open(file_path, 'r', encoding='utf-8') as file:
+            content = file.read()
+
+        # Search Bob: to "User: " or the end of the txt
+        match = re.search(r'Bob: (.*?)(?:User:|$)', content, re.DOTALL)
+        if not match:
+            #print("No content found after 'Bob: '")
+            return ""
+
+        # Get the extract txt
+        text = match.group(1)
+
+        # Remove all content in * *, it represents the emotion
+        cleaned_text = re.sub(r'\*([^*]+)\*', '', text)
+
+        cleaned_text = re.sub(r'\([^)]*\)', '', cleaned_text)
+
+        print(cleaned_text)
+        # Return the txt, and remove the empty space
+        return ' '.join(cleaned_text.strip().split())
+
 
     def center_target2(self, detected_persons, boxes, img_shape, stop_threshold = 0.5, vertical_offset=0.5):
         """
@@ -257,7 +302,8 @@ class Client:
             headers = {'content-type': "/audio/volume"}
             response = requests.get(self.address + headers["content-type"])
             j = response.json()
-            return j['exceed_threshold']
+            print(f'this is current volume: {j["volume"]}')
+            return j['volume'] > 1000
         except requests.exceptions.RequestException as e:
             print("An error occurred while getting the input volume:", e)
             return 
@@ -352,7 +398,7 @@ class Client:
         Whisper process audio file and pass the transcription result to llama visa pipe
         :return:
         """
-        direct_path = f"./../server/recording{self.audio_count}.wav"
+        direct_path = f"./../server/recordings/recording{self.audio_count}.wav"
         self.audio_count += 1
         filename = self.get_audio()
         while not filename:
@@ -364,7 +410,7 @@ class Client:
                 # return the transcript
                 return transcript if transcript else None
             print("Path not exist")
-        return 
+        return
 
     def say(self, word):
         headers = {'content-type': "/voice/say"}
