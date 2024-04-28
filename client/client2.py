@@ -10,7 +10,7 @@ from Visual.detection import FaceRecognition
 from Whisper_speaker_diarization.whisper import Whisper
 import torch
 import traceback
-
+import time
 class Client:
 
     def __init__(self, address='http://localhost:5001', device=0, **kwargs):
@@ -20,59 +20,96 @@ class Client:
         self.last_box = None
         self.current_target = 'unknown'
         self.device = device if torch.cuda.is_available() else 'cpu'
-
+        print('Using device: {}'.format(self.device))
         # Initialize the Whisper,  FaceRecognition, and Yolo models
-        self.whisper = Whisper(whisper_model="large-v2", gpu_id=self.device)
+        self.whisper = Whisper(gpu_id=self.device) # Use default medium model
+        #self.whisper = Whisper(whisper_model="large-v2", gpu_id=self.device)
         print('Whisper initialized')
-        self.face_recognition = FaceRecognition(face_db='./database/face_db', gpu_id=self.device)
-        # self.face_recognition = FaceRecognition(face_db='./database/face_db', gpu_id=0)
+        #self.face_recognition = FaceRecognition(face_db='./database/face_db', gpu_id=self.device)
+        self.face_recognition = FaceRecognition(face_db='./database/face_db', gpu_id=0)
         print('face_recognition initialized')
         self.yolo = YOLO('yolov8s.pt')
         self.yolo.to(device=self.device)
         print('YOLO initialized')
-
+        self.audio_flag = ""
+        self.previous_response = "None"
+        self.audio_count = 0
     # -------------------------------------------------------------------------------------------------------------------
     # Robot behavior ###################################################################################################
     # -------------------------------------------------------------------------------------------------------------------
     def communicate_behavior(self):
+        """
+        
+        """
         try:
             while True:
                 # Module Work --> Send all the transcript to llama
                     # -------------> Vision <----------------
-                person_joined = False 
                 while True: # If have person has detected in the camera, we start to record the conversation
                     img = self.get_image(save=True, path="./output", save_name="Pepper_Image")
                     prompt, detected_person,faces = self.process_image(img)
-                    if not detected_person:
+                    if detected_person and self.sound_exceed_threshold: # If we detected person and the input volume exceed the threshold, we can start to record the conversation
+                        print("Detected person ", detected_person)
                         break
-                if prompt is not None: # If the new recognized person has detected, the prompt will be generated
-                    with open("pipe_py_to_cpp", "w") as pipeOut:
-                        print("Sending to C++ from Vision:", prompt)
-                        pipeOut.write(prompt + "\n")
-                        pipeOut.flush()  # Ensure the message will send successfully
+                if len(prompt) > 0: # If the new recognized person has detected, the prompt will be generated
+                    print("Prompt ", prompt)
+                    path_to_cpp = "./../output/exchange_information/py_to_cpp.txt"
+                    with open(path_to_cpp, "w") as f:
+                        f.write(prompt)
+                    # with open("pipe_py_to_cpp", "w") as pipeOut:
+                    #     print("Sending to C++ from Vision:", prompt)
+                    #     pipeOut.write(prompt + "\n")
+                    #     pipeOut.flush()  # Ensure the message will send successfully
+                    
                     # ------------> Whisper <----------------
                 transcript = self.process_audio(csv_path='./../output/transcript/transcript_result.csv',
                                                 detected_person=detected_person)
-                if transcript is not None:
-                    with open("pipe_py_to_cpp", "w") as pipeOut:
-                        print("Sending to C++ from Whisper:", transcript)
-                        pipeOut.write(transcript + "\n")
-                        pipeOut.flush()  # Ensure the message will send successfully
-
-                # Receive the Response from llama
-                with open("pipe_cpp_to_py", "r") as pipeIn: # Waiting and reading the response from cpp(llama)
-                    response = pipeIn.readline().strip()
-                    print("Received from C++:", response)
-
-                # Send the response to Robot
-                if len(response) > 0:
-                    self.say(response)
+                if transcript:
+                    path_to_cpp = "./../output/exchange_information/py_to_cpp.txt"
+                    with open(path_to_cpp, "w") as f:
+                        f.write(transcript)
+                    print(transcript)
+                    # with open("pipe_py_to_cpp", "w") as pipeOut:
+                    #     print("Sending to C++ from Whisper:", transcript)
+                    #     pipeOut.write(transcript + "\n")
+                    #     pipeOut.flush()  # Ensure the message will send successfully
                 else:
-                    print("Read No response from llama")
+                    self.say("Sorry I have not heard anything")
+
+
+                if transcript or len(prompt) >0:
+                    response = ""
+                    try:
+                        count = 0
+                        path_to_py = "./../output/exchange_information/cpp_to_py.txt"
+                        while len(response) == 0:
+                            with open(path_to_py, "r") as f:
+                                print("Read from", path_to_py)
+                                response = f.read()
+                                if len(response) > 0:
+                                    break
+                            # # Receive the Response from llama
+                            # with open("pipe_cpp_to_py", "r") as pipeIn: # Waiting and reading the response from cpp(llama)
+                            #     response = pipeIn.readline().strip()
+                            #     print("Received from C++:", response)
+                            time.sleep(1)
+                        with open(path_to_py, "w") as f:
+                            print("Clear path", path_to_py)
+                            pass
+                        if response != self.previous_response:
+                            self.say(response)
+                            print('response: ', response)
+                            self.previous_response = response
+                        print(count)
+                        count += 1
+                    except Exception as e:
+                        print(f"An error occured whic receiving the response from C++{e}")
+
         except Exception as e:
             #print(e)
             traceback.print_exc()
             self.shutdown()
+
     def exp_tracking(self):
         frameCount = 0
         while frameCount < 100:
@@ -215,34 +252,41 @@ class Client:
             cv2.imwrite(file_path, img)
         return img
 
-    def process_image(self, image=None, show=False, save=False, path=None, save_name=None):
+    def sound_exceed_threshold(self):
+        try:
+            headers = {'content-type': "/audio/volume"}
+            response = requests.get(self.address + headers["content-type"])
+            j = response.json()
+            return j['exceed_threshold']
+        except requests.exceptions.RequestException as e:
+            print("An error occurred while getting the input volume:", e)
+            return 
+        
+    def download_audio(self):
         """
-        process the image and make prediction. Name, age and gender...
-        :param image:
-        :return:
+        Download an audio file from the given URL and return the local file path
+        return: str: the local file path of the downloaded audio file
         """
         try:
-            if image is None:
-                image = self.get_image()
-            #print("Image shape:", image.shape)
-            results = self.yolo.track(image, conf=0.5, persist=True, tracker='bytetrack.yaml', 
-                                    verbose=False)
-            detected_person, faces, prompt = self.face_recognition.recognition(image)
-            #self.center_target(faces, image.shape)
-            #print(f"len of faces: {len(faces)}")
-            self.center_target2(detected_person, faces, image.shape)
-
-            if show:
-                frame = self.face_recognition.draw_on_with_name(image, faces, detected_person)
-                # cv2.imshow("InsightFace Inference", frame)
-            # Send message via pipe, only if the prompt is not 0
-
-            return prompt, detected_person, faces # faces represent if this conversation have faces
-            #print(f'Prompt is nothing : {prompt}')
-        except Exception as e:
-            #print(f"An error occurred while processing the image: {e}")
-            return
-
+            headers = {'content-type': "/audio/recording"}
+            response = requests.get(self.address + headers["content-type"], stream=True)
+            if response.status_code == 200:
+                # Ensure the directory exists
+                os.makedirs('downloads', exist_ok=True)
+                # Specify the local path where the file should be saved
+                local_path = os.path.join("downloads", "downloaded_audio.wav")
+                # Write the response content to a file
+                with open(local_path, 'wb') as f:
+                    for chunk in response.iter_content(chunk_size=8192):
+                        f.write(chunk)
+                print(f"File downloaded successfully: {local_path}")
+                return local_path
+            else:
+                print("Failed to download the file:", response.status_code, response.text)
+        except requests.exceptions.RequestException as e:
+            print("An error occurred while downloading the file:", e)
+            return None
+        
     def get_audio(self):
         """
         Download an audio file from the given URL and return the local file path
@@ -273,42 +317,53 @@ class Client:
         except requests.exceptions.RequestException as e:
             print("An error occurred while downloading the file:", e)
             return None
-    
-    def download_audio(self):
+        
+    def process_image(self, image=None, show=False, save=False, path=None, save_name=None):
         """
-        Download an audio file from the given URL and return the local file path
-        return: str: the local file path of the downloaded audio file
+        process the image and make prediction. Name, age and gender...
+        :param image:
+        :return:
         """
         try:
-            headers = {'content-type': "/audio/recording"}
-            response = requests.get(self.address + headers["content-type"], stream=True)
-            if response.status_code == 200:
-                # Ensure the directory exists
-                os.makedirs('downloads', exist_ok=True)
-                # Specify the local path where the file should be saved
-                local_path = os.path.join("downloads", "downloaded_audio.wav")
-                # Write the response content to a file
-                with open(local_path, 'wb') as f:
-                    for chunk in response.iter_content(chunk_size=8192):
-                        f.write(chunk)
-                print(f"File downloaded successfully: {local_path}")
-                return local_path
-            else:
-                print("Failed to download the file:", response.status_code, response.text)
-        except requests.exceptions.RequestException as e:
-            print("An error occurred while downloading the file:", e)
-            return None
+            if image is None:
+                image = self.get_image()
+            #print("Image shape:", image.shape)
+            results = self.yolo.track(image, conf=0.5, persist=True, tracker='bytetrack.yaml', 
+                                    verbose=False)
+            detected_person, faces, prompt = self.face_recognition.recognition(image)
+            #self.center_target(faces, image.shape)
+            #print(f"len of faces: {len(faces)}")
+            self.center_target2(detected_person, faces, image.shape)
 
+            if show:
+                frame = self.face_recognition.draw_on_with_name(image, faces, detected_person)
+                # cv2.imshow("InsightFace Inference", frame)
+            # Send message via pipe, only if the prompt is not 0
+
+            return prompt, detected_person, faces # faces represent if this conversation have faces
+            #print(f'Prompt is nothing : {prompt}')
+        except Exception as e:
+            #print(f"An error occurred while processing the image: {e}")
+            return
+        
+    
     def process_audio(self, csv_path, lang='en', detected_person=None):
         """
         Whisper process audio file and pass the transcription result to llama visa pipe
         :return:
         """
+        direct_path = f"./../server/recording{self.audio_count}.wav"
+        self.audio_count += 1
         filename = self.get_audio()
+        while not filename:
+            filename = self.get_audio()
         if filename:
-            transcript = self.whisper.speech_to_text(filename, csv_path, lang, detected_person)
-            # return the transcript
-            return transcript if transcript else None
+            if os.path.exists(direct_path):
+                transcript = self.whisper.speech_to_text(direct_path, csv_path, lang, detected_person)
+                #os.remove(direct_path)
+                # return the transcript
+                return transcript if transcript else None
+            print("Path not exist")
         return 
 
     def say(self, word):
@@ -329,7 +384,6 @@ class Client:
             "content-type"] + f"?forward={str(forward)}&left={str(left)}&speed={str(speed)}")
         # if verbose ^ self.verbose:
         #     print(f"rotate_head_abs(forward={str(forward)}, left={str(left)}, speed={str(speed)})")
-
 
     def receive_text(self):
         """
