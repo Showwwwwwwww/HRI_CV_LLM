@@ -56,15 +56,15 @@ def generate_conversation_prompt(com_face):
         f"use with the person name]"
     )
 
-    file_path = "../../llama2/llama.cpp/in_output/input.txt"
+    # file_path = "../../llama2/llama.cpp/in_output/py_to_cpp.txt"
 
-    # Ensure the directory exists
-    os.makedirs(os.path.dirname(file_path), exist_ok=True)
+    # # Ensure the directory exists
+    # os.makedirs(os.path.dirname(file_path), exist_ok=True)
 
-    # Write the prompt to the file
-    with open(file_path, 'w') as file:
-        file.write(prompt)
+    # # Write the prompt to the file
+    # with open(file_path, 'w') as file:
+    #     file.write(prompt)
 
-    print(f"Prompt successfully stored in {file_path}")
+    # print(f"Prompt successfully stored in {file_path}")
 
     return prompt

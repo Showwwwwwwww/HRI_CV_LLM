@@ -15,8 +15,8 @@ class AudioManager2(object):
         # Enable energy input compution 
         self.audio_service.enableEnergyComputation()
         # Audio recording setting
-        self.threshold = 1000
-        self.silence_duration = 3
+        self.threshold = 500
+        self.silence_duration = 2
         self.is_recording = False
         self.last_sound_time = None
         self.sample_rate = 16000
@@ -25,50 +25,56 @@ class AudioManager2(object):
         self.isProcessingDone = False
         # Audio file setting 
         self.tmppath = ""
-        self.wavfile = self.tmppath + "recording.wav"
-        self.rawfile = self.tmppath + "rawrecording.raw"
-        self.rawoutput = open(self.rawfile, "wb+")
+        self.recording_count = 0
+        self.wavfile = self.tmppath + "recording" + str(self.recording_count) + ".wav"
+        self.rawfile = self.tmppath + "rawrecording" + str(self.recording_count) + ".raw"
         self.framesCount = 0
-        self.nbOfFramesToProcess =100
-        
+        self.nbOfFramesToProcess =50
+        self.isRecording = False
     
     def processRemote(self, nbOfChannels, nbOfSamplesByChannel, timeStamp, inputBuffer):
         """
         Record the audio data from the front microphone depend on the sound threshold
         """
-        # keep recording until reach the set frame number
-        self.framesCount = self.framesCount + 1
-        #print(self.framesCount)
-        # if (self.framesCount <= self.nbOfFramesToProcess):
-        #     print(self.framesCount)
-        #     print(self.isProcessingDone)
-        #     self.rawoutput.write(inputBuffer)
-        # else:
-        #     #print(self.isProcessingDone)
-        #     self.isProcessingDone = True
-        #     self.rawoutput.close()
-        #Record wav with sound threshold
-        front_energy = self.audio_service.getFrontMicEnergy()
-        #print("Front energy: ", front_energy)
-        if front_energy > self.threshold:
-            print("Front energy: ", front_energy)
+
+        front_energy = self.getSound()
+        print("Front energy: ", front_energy)
+
+        print("Statues before: ", self.isRecording)
+        if self.isRecording: # If is recording:
+            #print("count", self.framesCount)
+            if front_energy < self.threshold:
+                print("current frame", self.framesCount)
+                self.framesCount += 1
+            else:
+                print("reset count")
+                self.framesCount = 1
             self.rawoutput.write(inputBuffer)
             self.last_sound_time = time.time()
-        elif self.last_sound_time is not None and (time.time() - self.last_sound_time) > self.silence_duration:
-            print("Silence")
+        else:
+            if front_energy > self.threshold:
+                self.isRecording = True
+                self.framesCount = 0
+                print("start_processing status changed")
+                #print("Front energy: ", front_energy)
+        if self.framesCount > self.nbOfFramesToProcess:
             self.isProcessingDone = True
             self.rawoutput.close()
+            self.framesCount = 0
+            print("Recordng finished")
 
     def startProcessing(self):
         """
         Subscribe the service and return the audio data
         """
-        # try:
+        # try
+        self.isProcessingDone = False
+        self.rawoutput = open(self.rawfile, "wb+")
         self.audio_service.setClientPreferences(self.module_name, self.sample_rate, self.channels, 0)
         self.audio_service.subscribe(self.module_name)
         while self.isProcessingDone == False:
+            #print("Pausing")
             time.sleep(1)
-
         self.audio_service.unsubscribe(self.module_name)
     # except Exception as e:
         #     print("Error while subscribing", e)
@@ -79,9 +85,19 @@ class AudioManager2(object):
         data, samplerate = sf.read(self.rawfile, channels=1, samplerate=16000, subtype='PCM_16')
         sf.write(self.wavfile, data, samplerate)
         print "The recording is saved here: " + self.wavfile
-        
+        self.recording_count+=1
+        self.wavfile = self.tmppath + "recording" + str(self.recording_count) + ".wav"
+        self.rawfile = self.tmppath + "rawrecording" + str(self.recording_count) + ".raw"
+
         #return self.wavfile
         return data, samplerate
+    
+    def getSound(self):
+        return self.audio_service.getFrontMicEnergy()
+
+    def exceed_threshold(self):
+        return self.getSound() > self.threshold
+    
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -110,5 +126,8 @@ if __name__ == "__main__":
     app.session.registerService(MyAudioManager.module_name, MyAudioManager)
     # Start processing the audio data
     print("Start processing the audio data...")
-    audio_data = MyAudioManager.startProcessing()
-    print("Audio data: ", audio_data)
+    count = 0
+    while count < 10:
+        audio_data = MyAudioManager.startProcessing()
+        #print("Audio data: ", audio_data)
+        count += 1
