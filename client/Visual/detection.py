@@ -7,9 +7,9 @@ from ultralytics import YOLO
 #from utlis import feature_compare,generate_conversation_prompt
 from Visual.utlis import feature_compare,generate_conversation_prompt
 from sklearn import preprocessing
-
+import json
 class FaceRecognition:
-    def __init__(self, gpu_id=0, face_db='./../database/face_db', threshold=1.24, det_thresh=0.50, det_size=(640, 640)):
+    def __init__(self, gpu_id=0, face_db='./database/face_db', threshold=1.24, det_thresh=0.50, det_size=(640, 640),people_info_path = './database/people_info/people_info.json'):
         """
         Face Recognition Tool
         :param gpu_id: Positive number represent the ID for GPU, negative number is for using CPU
@@ -20,20 +20,32 @@ class FaceRecognition:
         """
         self.gpu_id = gpu_id
         self.face_db = face_db
+        self.people_info_path = people_info_path
         self.threshold = threshold
         self.det_thresh = det_thresh
         self.det_size = det_size
         # Loading the model
         self.model = insightface.app.FaceAnalysis(name='buffalo_l',
-                                                  providers=['CUDAExecutionProvider' if gpu_id > 0 else 'CPUExecutionProvider'])
+                                                  providers=['CUDAExecutionProvider' if gpu_id >= 0 else 'CPUExecutionProvider'])
         self.model.prepare(ctx_id=self.gpu_id, det_thresh=self.det_thresh, det_size=self.det_size)
         # facial feature
         self.faces_embedding = list()
         # loading the face in db
         self.load_faces(self.face_db)
-        
+        self.unknownCount = 0
+
+    def initialize_faces(self):
+        """
+        By interate the faces in database, to generate a Json fomat data frame wihch stores all target people's information
+        """
+        pass
+
     # loading the face in db with feature
     def load_faces(self, face_db_path):
+        """
+        Initialize the  face db, to generate all the embedding for the face in the db. And store the result into a json file.
+        face file name is name_age_gender.jpg
+        """
         print(f'Loading face_db from: ',os.path.abspath(self.face_db))
         if not os.path.exists(face_db_path):
             os.makedirs(face_db_path)
@@ -41,32 +53,40 @@ class FaceRecognition:
             for file in files:
                 input_image = cv2.imdecode(np.fromfile(os.path.join(root, file), dtype=np.uint8), 1)
                 # username is the file name
-                user_name = file.split(".")[0]
+                user_info = file.split(".")[0].split("_")
+                user_name = user_info[0]
+                age = user_info[1]
+                gender = user_info[2] # M or F
                 face = self.model.get(input_image)[0]
                 embedding = np.array(face.embedding).reshape((1, -1))
                 embedding = preprocessing.normalize(embedding)
                 self.faces_embedding.append({
                     "user_name": user_name,
                     "feature": embedding,
-                    "sex": "Unknown",
-                    "age": "Unknown",
+                    "sex": gender,
+                    "age": age,
                     'flag': True
                 })
-
+        # # write data into json file
+        # with open(self.people_info_path, 'w') as json_file:
+        #     json.dump(self.faces_embedding, json_file, indent=4)
 
     def recognition(self, image):
         faces = self.model.get(image)
         detectedPerson = list()
         prompt = ""
+        flag = False
         for face in faces:
             # Start facial detection
             embedding = np.array(face.embedding).reshape((1, -1))
             embedding = preprocessing.normalize(embedding)
             user_name = "unknown"
             for com_face in self.faces_embedding:
+                # Compare all fac
                 r = feature_compare(embedding, com_face["feature"], self.threshold)
                 # If this is the person who stored in the db
                 if r:
+                    flag = True
                     user_name = com_face["user_name"]
                     # If the flag is true, we only do it once
                     if com_face["flag"]:
