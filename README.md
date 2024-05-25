@@ -96,7 +96,7 @@ This repo has already complete the all the process from the upon resources.
 <details>
 If you want to use GPU to run the llama while need to use specific way to make it.
 - Firstly, navigate to llama.cpp folder, 
-- Then, open the Makefile, change line 245, from native to NVCCFLAGS += -arch=**sm_87**(87 represent to for 4090 GPU), the value depends on the fasted speed in 
+- Then, open the Makefile, change line 245, from native to NVCCFLAGS += -arch=**sm_87**(87 represent to for 4090 GPU, native for MAC user), the value depends on the fasted speed in 
 
 ```
 nvcc --list-gpu-arch
@@ -145,8 +145,10 @@ to be able to invoke the program.
 
 Example:
 ```
-CUDA_VISIBLE_DEVICE=1 ./main -m ./models/7B/ggml-model-q4_0.bin -n 1024 --repeat_penalty 1.0 --color -i -r "User:" -f ./prompts/customisedChatPrompt.txt
+CUDA_VISIBLE_DEVICES=1 ./main -m ./models/7B/ggml-model-q4_0.bin -n 512 --repeat_penalty 1.0 --color -i -r "User:" -f ./prompts/customisedChatPrompt.txt
 ```
 
-
-
+## Naoqi Export
+```
+export PYTHONPATH=${PYTHONPATH}:/home/shuo/robot_research/pynaoqi-python2.7-2.5.5.5-linux64/lib/python2.7/site-packages
+```

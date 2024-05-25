@@ -20,7 +20,7 @@ def feature_compare(feature1, feature2, threshold=0.5):
         return True
     return False
 
-def generate_conversation_prompt(com_face):
+def generate_conversation_prompt(com_face,dp_prompt=False):
     """
     Generates a prompt to continue a conversation with a newly recognized person,
     including their name, age, and gender.
@@ -36,6 +36,13 @@ def generate_conversation_prompt(com_face):
     age =  com_face["age"]
     gender = com_face["sex"]
 
+    if user_name == "ShuoChen":
+        prompt = (
+            f"[Here is the information for the poeple who interacting with you "
+            f"{user_name} has join in the conversation, he is 21 years old and he is a Male. "
+            f" He is a studnt at Monash University and studying computer science.")
+        return prompt
+
     # Gender-neutral pronoun handling
     if gender == 'M':
         pronoun = 'he'
@@ -45,7 +52,6 @@ def generate_conversation_prompt(com_face):
     # Creating a welcoming and inclusive prompt
     prompt = (
         f"[Here is the information for Bob please do not response this prompt and continue your conversation "
-        f"if you are in a conversation"
         f"{user_name} has join in the conversation, he is {age} years old and identify as {gender}. "
         f"You are here to continue your engaging discussion and ensure it's inclusive and respectful. "
         f"{pronoun.capitalize()} has just joined us, and I'm looking forward to integrating "
@@ -53,18 +59,7 @@ def generate_conversation_prompt(com_face):
         f"Let's continue discussing with {user_name} in a way that's smooth and enjoyable for everyone involved."
         f"In order to do it, "
         f"You can initiate a more anthropomorphic conversation by asking questions of the current "
-        f"use with the person name]"
+        f"use with the person name. You need to remember the all information for {user_name} with {age} and {gender} to "
+        f"provied the better quliaty for the conversation.]"
     )
-
-    # file_path = "../../llama2/llama.cpp/in_output/py_to_cpp.txt"
-
-    # # Ensure the directory exists
-    # os.makedirs(os.path.dirname(file_path), exist_ok=True)
-
-    # # Write the prompt to the file
-    # with open(file_path, 'w') as file:
-    #     file.write(prompt)
-
-    # print(f"Prompt successfully stored in {file_path}")
-
     return prompt

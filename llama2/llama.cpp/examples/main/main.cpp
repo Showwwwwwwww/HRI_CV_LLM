@@ -103,6 +103,30 @@ void WriteToFile(const std::string& filename,  const std::string output) {
         std::cerr << "Unable to open file: " << filename << std::endl;
     }
 }
+// Function to write data to a CSV file
+void writeToCSV(const std::string& filename, const std::vector<std::string>& data) {
+    std::ofstream file;
+
+    // Open file in append mode
+    file.open(filename, std::ios::app);
+
+    if (!file.is_open()) {
+        std::cerr << "Failed to open the file." << std::endl;
+        return;
+    }
+
+    // Write data to the file
+    for (size_t i = 0; i < data.size(); ++i) {
+        file << data[i];
+        if (i < data.size() - 1) {
+            file << ",";
+        }
+    }
+    file << "\n";
+
+    // Close the file
+    file.close();
+}
 
 
 // Write to cutomized the output response which will send to Pepper
@@ -840,22 +864,6 @@ int main(int argc, char ** argv) {
                 }
                 // printf("`%d`", candidates_p.size);
 
-                // std::string outFilename = "in_output/output.txt";
-//                std::string outFilename = "./../../output/exchange_information/cpp_to_py.txt";
-//                std::string response = extractSentence(responseTokens);
-//                WriteToFile(outFilename,responseTokens);
-                //std::cout<< "This is the original token  " << responseTokens <<" \n"<< std::endl;
-                //std::cout<< "This is the adjusted response from llama   " << response <<" \n"<< std::endl;
-                //WriteToFile(outFilename,responseTokens);
-                //responseTokens = "";
-//                std::ofstream outPipe("./../../client/pipe_cpp_to_py"); // Stores in Root Directory
-//                if (outPipe.is_open()) {
-//                    outPipe << response << std::endl;
-//                    //std::cout << response<< std::endl;
-//                    outPipe.close();
-//                    }
-                //saveConversation(response); // Write response into the csv file to record
-
 
                 if (grammar != NULL) {
                     llama_grammar_accept_token(ctx, grammar, id);
@@ -998,10 +1006,11 @@ int main(int argc, char ** argv) {
 //                if (response != 'empty result'){
 //                    WriteToFile(outFilename,response);}
                 //WriteToFile(outFilename,responseTokens);
-                //std::cout<< "This is the original token  " << responseTokens <<" \n"<< std::endl;
+                std::cout<< "This is the original token  " << responseTokens <<" \n"<< std::endl;
+                std::cout<< "Response " << response <<" \n"<< std::endl;
+                writeToCSV("./../../output/exchange_information/Dialog_Record.csv", {responseTokens});
                 responseTokens = "";
 
-                //std::string filename = "in_output/input.txt";
                  std::string filename = "./../../output/exchange_information/py_to_cpp.txt";
                  bool another_line = true;
                  while (another_line) {
@@ -1011,26 +1020,10 @@ int main(int argc, char ** argv) {
                      if (!content.empty()) {
                          another_line = false;
                          buffer += content;
+                         //writeToCSV("./../../output/exchange_information/Dialog_Record.csv", {content});
                      }
                  }
-//                std::string content;
-//                content = "";
-//                std::string py_to_cpp_path = "./../../client/test";
-//                std::cout << "Start receiving infor" << std::endl;
-//               while(content.length() == 0){
-//
-//               std::ifstream inPipe(py_to_cpp_path); // Receive the transcripr from whisper
-//                   getline(inPipe,content);
-//                   buffer += content;
-//                   std::cout << "Receove from py: "<< content << std::endl;
-//                   //inPipe.clear();
-//                   inPipe.close();
-//               }
-
-                // Inside the code block where you want to save the conversation
-                //saveConversation(content);
-
-
+                std::cout<< "Arrived here \n"<< std::endl;
                 // done taking input, reset color
                 console::set_display(console::reset);
 

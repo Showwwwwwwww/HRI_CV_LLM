@@ -71,7 +71,7 @@ class Whisper:
 
         return warn_output + text
 
-    def speech_to_text(self, audio_file, save_path,selected_source_lang, joined_person):
+    def speech_to_text(self, audio_file, save_path,selected_source_lang, joined_person, llmOnly = False):
         """
         1. Using Open AI's Whisper model to seperate audio into segments and generate transcripts.
         2. Generating speaker embeddings for each segments.
@@ -86,6 +86,7 @@ class Whisper:
 
         # model = WhisperModel(whisper_model, compute_type="int8")
         # update number of speakers
+        llmOnlyResponse = ''
         num_speakers = len(joined_person) if joined_person is not None else 0
 
         print("Whisper Model is set up")
@@ -202,6 +203,7 @@ class Whisper:
                         objects['End'].append(str(convert_time(segments[i - 1]["end"])))
                         objects['Text'].append(text)
                         text = ''
+                llmOnlyResponse = llmOnlyResponse + segment["text"] + '\'' + '     '
                 text = text + segment["speaker"] + ' say: ' + '\'' + segment["text"] + '\'' + '     '
                 # with open(txtFilename, 'a') as file:
                 #     file.write(text)
@@ -231,7 +233,13 @@ class Whisper:
             print(f"Result has been saved to [Save path]: {os.path.abspath(save_path)}")
             print(df_results)
             # print(system_info)
-            return text
+            print(text)
+            print(duration)
+            print(time_diff)
+            if llmOnly: # In the llmOnly Mode, wo only return the response without speaker
+                return [llmOnlyResponse,duration,time_diff]
+            else:
+                return [text,duration,time_diff]
 
         except Exception as e:
             raise RuntimeError("Error Running inference with local model", e)

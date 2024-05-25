@@ -56,14 +56,14 @@ class FaceRecognition:
                 user_info = file.split(".")[0].split("_")
                 user_name = user_info[0]
                 age = user_info[1]
-                gender = user_info[2] # M or F
+                sex = user_info[2] # M or F
                 face = self.model.get(input_image)[0]
                 embedding = np.array(face.embedding).reshape((1, -1))
                 embedding = preprocessing.normalize(embedding)
                 self.faces_embedding.append({
                     "user_name": user_name,
                     "feature": embedding,
-                    "sex": gender,
+                    "sex": sex,
                     "age": age,
                     'flag': True
                 })
@@ -72,31 +72,42 @@ class FaceRecognition:
         #     json.dump(self.faces_embedding, json_file, indent=4)
 
     def recognition(self, image):
+        # Get all faces in the image
         faces = self.model.get(image)
         detectedPerson = list()
         prompt = ""
-        flag = False
         for face in faces:
             # Start facial detection
             embedding = np.array(face.embedding).reshape((1, -1))
             embedding = preprocessing.normalize(embedding)
-            user_name = "unknown"
+            user_name = f"unknown_person{self.unknownCount}"
+            detected = False
             for com_face in self.faces_embedding:
                 # Compare all fac
                 r = feature_compare(embedding, com_face["feature"], self.threshold)
-                # If this is the person who stored in the db
-                if r:
-                    flag = True
+                if r: # If face matched
+                    detected = True
                     user_name = com_face["user_name"]
-                    # If the flag is true, we only do it once
-                    if com_face["flag"]:
-                        com_face["age"] = face.age
-                        com_face["sex"] = face.sex
+                    if com_face["flag"]: # First time matched, we generate prompt
+                        # com_face["age"] = face.age
+                        # com_face["sex"] = face.sex
                         com_face["flag"] = False  #flag==False means we have already generated the prompt to this person
-                        prompt = generate_conversation_prompt(com_face)
+                        prompt += generate_conversation_prompt(com_face)
+            if not detected: # If this face is new
+                print(f"new face detected: {user_name},{face.sex},{face.age}")
+                new_face = {
+                    "user_name": user_name,
+                    "feature": embedding,
+                    "sex": face.sex,
+                    "age": face.age,
+                    'flag': False
+                }
+                self.faces_embedding.append(new_face)
+                prompt += generate_conversation_prompt(new_face)
+                #print(f'Here is the prompt{prompt}')
+                self.unknownCount += 1
             detectedPerson.append(user_name)
-
-        return  detectedPerson, faces, prompt
+        return detectedPerson, faces, prompt
 
     def draw_on_with_name(self, img, faces, names):
         # Add the name on the pic
@@ -116,7 +127,7 @@ class FaceRecognition:
                         color = (0, 255, 0)
                     cv2.circle(dimg, (kps[l][0], kps[l][1]), 1, color,
                                2)
-            if face.gender is not None and face.age is not None:
+            if face.sex is not None and face.age is not None:
                 sex = face.sex
                 age = face.age
                 for one_face in self.faces_embedding:

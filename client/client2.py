@@ -12,6 +12,9 @@ import torch
 import traceback
 import time
 import re
+import json
+import threading
+
 class Client:
 
     def __init__(self, address='http://localhost:5001', device=0, **kwargs):
@@ -35,16 +38,170 @@ class Client:
         self.audio_flag = ""
         self.previous_response = "None"
         self.audio_count = 0
+        self.json_path = self.create_new_json_file('./output')
+        self.stop_event = threading.Event()
+        self.detected_person = None
+        self.prompt = None
+        self.face = None
+        self.lock = threading.Lock()
+        self.frameCount = 0
+        self.eyeContact = 0
     # -------------------------------------------------------------------------------------------------------------------
     # Robot behavior ###################################################################################################
     # -------------------------------------------------------------------------------------------------------------------
-    def communicate_behavior(self):
+    def llm_vision_agent(self,person,scenario):
         """
-        
+        Threaded version of the communicate_behavior function
         """
+        rounds_data = {}
+        dic_count = 0
         self.clear_audio_files()
+        vision_thread = threading.Thread(target=self.vision_thread)
+        vision_thread.start()
+        path_to_cpp = '/home/shuo/robot_research/output/exchange_information/py_to_cpp.txt'
+        path_to_py = './../output/exchange_information/cpp_to_py.txt'
+        prompt = None
+        if person != 'ShuoChen': # Person Should Be either Stanger or ShuoChen
+            # Read the content in the stored DataBase
+            prompt = self.load_person_info('./Visual/face_db/people_info/people.json', scenario)
         try:
             while True:
+                round_info = {}
+                while not self.detected_person and self.sound_exceed_threshold(): # If have person and 
+                        round_info["Prompt"] = prompt or self.prompt 
+                        self.prompt = prompt or self.prompt
+
+                self.say("Start recording audio")
+                result = self.process_audio(csv_path='./../output/transcript/transcript_result.csv',
+                                            detected_person=person) # This person will be either Stranger or ShuoChen
+                self.say("Audio recording finished")
+                transcript = result[0]
+                duration = result[1]
+                diff_time = result[2:]
+                transcript_info = {}
+                transcript_info["Transcript"] = transcript
+                transcript_info["Audio Duration"] = duration
+                transcript_info["Processing Time"] = diff_time
+                round_info["Audio Info"] = transcript_info
+                if transcript:
+                    directory = os.path.dirname(path_to_cpp)
+                    if not os.path.exists(directory):
+                        os.makedirs(directory)
+                    with open(path_to_cpp, "w") as f:
+                        temp ='This is  information for the people who asking your question, you need to answer his question in 2 sentences what ever he asked,' 
+                        transcript = temp + self.prompt + 'He is asking question. '+ transcript 
+                        f.write(transcript)
+                        print(f'Transcript saved to {path_to_cpp}')
+                        print(f'len of promot: {len(self.prompt)}')
+                    print(transcript)
+                else:
+                    self.say("Sorry I have not heard anything")
+
+                # ------------> Llama <----------------
+                response_info = {}
+                if transcript or len(self.prompt) >0:
+                    response = ""
+                    try:
+                        response, processTime = self.llm_response(path_to_py)
+                        response_info["Llama response"] = response
+                        response_info["Response Time"] = processTime
+                        with open(path_to_py, "w") as f:
+                            print("Clear path", path_to_py)
+                            pass
+                        if response != self.previous_response:
+                            self.say(response)
+                            self.previous_response = response
+                    except Exception as e:
+                        print(f"An error occured whic receiving the response from C++{e}")
+                round_info["Response Info"] = response_info 
+                rounds_data[f"Round{dic_count}"] = round_info # We save this the information in this round to the big frame data
+                with open(self.json_path, 'w') as f:
+                    json.dump(rounds_data, f, indent=4) # Save it each time
+                dic_count+=1
+
+
+        except KeyboardInterrupt:
+            print("Process interrupted by user.")
+            self.stop_event.set()
+            vision_thread.join()
+            rounds_data[f"Round{dic_count}"] = round_info
+            with open(self.json_path, 'w') as f:
+                json.dump(rounds_data, f, indent=4)
+            self.shutdown()
+
+        except Exception as e:
+            print(f"An error occurred: {e}")
+            self.stop_event.set()
+            vision_thread.join()
+            traceback.print_exc()
+            with open(self.json_path, 'w') as f:
+                json.dump(rounds_data, f, indent=4)
+            self.shutdown()
+    def llm_only_agent(self):
+        """
+        This agent will utilize the Whisper Model, LLama and Robot to complete the communciatio behavior
+        """
+        # Set up the communicate the txt
+        path_to_cpp = '/home/shuo/robot_research/output/exchange_information/py_to_cpp.txt'
+        path_to_py = './../output/exchange_information/cpp_to_py.txt'
+
+        # Start the communication
+        while True:
+            round_info = {}
+            while not self.sound_exceed_threshold():
+                # Continue Looping until the sound exceed the threshold
+                pass
+            print("Audio Recoding Start")      
+            result = self.process_audio(csv_path='./../output/transcript/transcript_result.csv',
+                                        detected_person= None,llmOnly=True)   #  The result will be format as Speaker Name Says: "Transcript"
+            print("Audio Recoding Finished")
+            transcript = result[0]
+            duration = result[1]
+            diff_time = result[2:]
+            transcript_info = {}
+            transcript_info["Transcript"] = transcript
+            transcript_info["Audio Duration"] = duration
+            transcript_info["Processing Time"] = diff_time
+            round_info["Audio Info"] = transcript_info
+            if transcript:
+                    directory = os.path.dirname(path_to_cpp)
+                    if not os.path.exists(directory):
+                        os.makedirs(directory)
+                    with open(path_to_cpp, "w") as f:
+                        f.write(transcript)
+                        print(f'Transcript saved to {path_to_cpp}')
+                    print(transcript)
+            else:
+                self.say("Sorry I have not heard anything")
+                continue
+            # ------------> Llama <----------------
+            response_info = {}
+            response = ""
+            try:
+                response, processTime = self.llm_response(path_to_py) # Get the response from llama
+                response_info["Llama response"] = response
+                response_info["Response Time"] = processTime
+                with open(path_to_py, "w") as f:
+                    print("Clear path", path_to_py)
+                    pass
+                if response != self.previous_response:
+                    self.say(response)
+                    self.previous_response = response
+            except Exception as e:
+                    print(f"An error occured whic receiving the response from C++{e}")
+            
+    def communicate_behavior(self):
+        """
+        The main function which contains all the behavior of the robot
+        """
+        rounds_data = {} # Big frame data for this conversation experiment
+        dic_count = 0 # Count the round in this conversation
+        self.clear_audio_files() # Clear the previous audio files in the server at the begining of this experiment
+        path_to_cpp = '/home/shuo/robot_research/output/exchange_information/py_to_cpp.txt'
+        path_to_py = './../output/exchange_information/cpp_to_py.txt'
+        try:
+            while True:
+                round_info = {} # initalize the log dict
                 # Module Work --> Send all the transcript to llama
                     # -------------> Vision <----------------
                 while True: # If have person has detected in the camera, we start to record the conversation
@@ -52,158 +209,294 @@ class Client:
                     prompt, detected_person,faces = self.process_image(img)
                     if detected_person and self.sound_exceed_threshold(): # If we detected person and the input volume exceed the threshold, we can start to record the conversation
                         print("Detected person ", detected_person)
+                        round_info["Detected person"] = detected_person
+                        if len(prompt) > 0:
+                            round_info["Prompt"] = prompt 
+                            # with open(path_to_cpp, "w") as f:
+                            #     f.write(prompt)
+                            #     print("Prompt has been written to", path_to_cpp)
+                        else:
+                            round_info["prompt"] = None
                         break
-                path_to_cpp = '/home/shuo/robot_research/output/exchange_information/py_to_cpp.txt'
-                if len(prompt) > 0: # If the new recognized person has detected, the prompt will be generated
-                    print("Prompt ", prompt)
-                    with open(path_to_cpp, "w") as f:
-                        f.write(prompt)
-                    # with open("pipe_py_to_cpp", "w") as pipeOut:
-                    #     print("Sending to C++ from Vision:", prompt)
-                    #     pipeOut.write(prompt + "\n")
-                    #     pipeOut.flush()  # Ensure the message will send successfully
-                    
                     # ------------> Whisper <----------------
-                transcript = self.process_audio(csv_path='./../output/transcript/transcript_result.csv',
+
+                result = self.process_audio(csv_path='./../output/transcript/transcript_result.csv',
                                                 detected_person=detected_person)
+                if result[0] is None: # if result[0] is empty, we continue to the next round
+                    self.say("Sorry I have not heard anything, can you say it again?")
+                    result = self.process_audio(csv_path='./../output/transcript/transcript_result.csv',
+                                                detected_person=detected_person)
+                transcript = result[0]
+                duration = result[1]
+                diff_time = result[2:]
+                transcript_info = {}
+                transcript_info["Transcript"] = transcript
+                transcript_info["Audio Duration"] = duration
+                transcript_info["Processing Time"] = diff_time
+                round_info["Audio Info"] = transcript_info
                 if transcript:
+                    directory = os.path.dirname(path_to_cpp)
+                    if not os.path.exists(directory):
+                        os.makedirs(directory)
                     with open(path_to_cpp, "w") as f:
+                        transcript = transcript + prompt
                         f.write(transcript)
+                        print(f'Transcript saved to {path_to_cpp}')
+                        print(f'len of promot: {len(prompt)}')
                     print(transcript)
-                    # with open("pipe_py_to_cpp", "w") as pipeOut:
-                    #     print("Sending to C++ from Whisper:", transcript)
-                    #     pipeOut.write(transcript + "\n")
-                    #     pipeOut.flush()  # Ensure the message will send successfully
+
                 else:
                     self.say("Sorry I have not heard anything")
 
-
+                # ------------> Llama <----------------
+                response_info = {}
                 if transcript or len(prompt) >0:
                     response = ""
                     try:
-                        count = 0
-                        path_to_py = '/home/shuo/robot_research/output/exchange_information/cpp_to_py.txt'
+                        cur_time = time.time()
+                        directory = os.path.dirname(path_to_py)
+                        # If not exist, creat it
+                        if not os.path.exists(directory):
+                            os.makedirs(directory)
                         while len(response) == 0:
                             response = self.process_response_llama(path_to_py)
+                            print('waiting for get response from cpp')
                             if len(response) > 0:
-                                print(f'response when broke: {response}')
+                                end_time = time.time()
+                                response_info["Llama response"] = response
+                                response_info["Response Time"] = end_time - cur_time
                                 break
-                            # with open(path_to_py, "r") as f:
-                            #     print("Read from", path_to_py)
-                            #     response = f.read()
-                            #     if len(response) > 0:
-                            #         break
-                            # # Receive the Response from llama
-                            # with open("pipe_cpp_to_py", "r") as pipeIn: # Waiting and reading the response from cpp(llama)
-                            #     response = pipeIn.readline().strip()
-                            #     print("Received from C++:", response)
                             time.sleep(1)
                         with open(path_to_py, "w") as f:
                             print("Clear path", path_to_py)
                             pass
                         if response != self.previous_response:
                             self.say(response)
-                            #print('response: ', response)
                             self.previous_response = response
-                        #print(count)
-                        count += 1
+                        
                     except Exception as e:
                         print(f"An error occured whic receiving the response from C++{e}")
+                round_info["Response Info"] = response_info 
+                rounds_data[f"Round{dic_count}"] = round_info # We save this the information in this round to the big frame data
+                with open(self.json_path, 'w') as f:
+                    json.dump(rounds_data, f, indent=4) # Save it each time
+                dic_count+=1
 
+        except KeyboardInterrupt:
+            print("Process interrupted by user.")
+            rounds_data[f"Round{dic_count}"] = round_info  # We save this the information in this round to the big frame data
+            with open(self.json_path, 'w') as f:
+                json.dump(rounds_data, f, indent=4)
+            self.shutdown()
         except Exception as e:
-            #print(e)
-            traceback.print_exc()
+            rounds_data[f"Round{dic_count}"] = round_info  # We save this the information in this round to the big frame data
+            with open(self.json_path, 'w') as f:
+                json.dump(rounds_data, f, indent=4)
             self.shutdown()
 
-    def exp_tracking(self):
-        frameCount = 0
-        while frameCount < 100:
-            person_joined = False 
-            while not person_joined: # If have person has detected in the camera, we start to record the conversation
-                prompt, detected_person,faces = self.process_image()
-                person_joined = len(faces) > 0 # Have person face to camera
 
+    def communicate_behavior2(self):
+        """
+        Threaded version of the communicate_behavior function
+        """
+        rounds_data = {}
+        dic_count = 0
+        self.clear_audio_files()
+        vision_thread = threading.Thread(target=self.vision_thread)
+        vision_thread.start()
+        path_to_cpp = '/home/shuo/robot_research/output/exchange_information/py_to_cpp.txt'
+        path_to_py = './../output/exchange_information/cpp_to_py.txt'
+        prompt = None
+        try:
+            while True:
+                round_info = {}
+                while True:
+                    if self.detected_person and self.sound_exceed_threshold():
+                        print("Detected person ", self.detected_person)
+                        round_info["Detected person"] = self.detected_person
+                        round_info["Prompt"] = self.prompt or None
+                        break
+                self.say("Start recording audio")
+                result = self.process_audio(csv_path='./../output/transcript/transcript_result.csv',
+                                            detected_person=self.detected_person)
+                self.say("Audio recording finished")
+
+                transcript = result[0]
+                duration = result[1]
+                diff_time = result[2:]
+                transcript_info = {}
+                transcript_info["Transcript"] = transcript
+                transcript_info["Audio Duration"] = duration
+                transcript_info["Processing Time"] = diff_time
+                round_info["Audio Info"] = transcript_info
+                if transcript:
+                    directory = os.path.dirname(path_to_cpp)
+                    if not os.path.exists(directory):
+                        os.makedirs(directory)
+                    with open(path_to_cpp, "w") as f:
+                        temp ='Right now there are some people joining the conversation. And this is what he saying'
+                        transcript = temp + transcript + self.prompt
+                        f.write(transcript)
+                        print(f'Transcript saved to {path_to_cpp}')
+                        print(f'len of promot: {len(self.prompt)}')
+                    print(transcript)
+
+                else:
+                    self.say("Sorry I have not heard anything")
+
+                # ------------> Llama <----------------
+                response_info = {}
+                if transcript or len(self.prompt) >0:
+                    response = ""
+                    try:
+                        response, processTime = self.llm_response(path_to_py)
+                        response_info["Llama response"] = response
+                        response_info["Response Time"] = processTime
+                        with open(path_to_py, "w") as f:
+                            print("Clear path", path_to_py)
+                            pass
+                        if response != self.previous_response:
+                            self.say(response)
+                            self.previous_response = response
+                    except Exception as e:
+                        print(f"An error occured whic receiving the response from C++{e}")
+                round_info["Response Info"] = response_info 
+                round_info['Eye Contact Rate'] = self.eyeContact / self.frameCount
+                rounds_data[f"Round{dic_count}"] = round_info # We save this the information in this round to the big frame data
+                with open(self.json_path, 'w') as f:
+                    json.dump(rounds_data, f, indent=4) # Save it each time
+                dic_count+=1
+        except KeyboardInterrupt:
+            print("Process interrupted by user.")
+            self.stop_event.set()
+            vision_thread.join()
+            round_info['Eye Contact Rate'] = self.eyeContact / self.frameCount
+            rounds_data[f"Round{dic_count}"] = round_info
+            with open(self.json_path, 'w') as f:
+                json.dump(rounds_data, f, indent=4)
+            self.shutdown()
+
+        except Exception as e:
+            print(f"An error occurred: {e}")
+            self.stop_event.set()
+            vision_thread.join()
+            traceback.print_exc()
+            with open(self.json_path, 'w') as f:
+                json.dump(rounds_data, f, indent=4)
+            self.shutdown()
 
 
     # -------------------------------------------------------------------------------------------------------------------
     # Information Process  ###################################################################################################
     # -------------------------------------------------------------------------------------------------------------------
-    def center_target(self, box, img_shape, stop_threshold = 0.1, vertical_offset=0.5, detected_Person=False):
-        """ Takes in target bounding box data and attempts to center it
-        Preconditons:
-            1. box must contain data about exactly 1 bounding box
+    def load_person_info(self, person_json_path,scenario):
+        valid_scenarios = ['Education', 'Healthcare','Retail','Work']
+        if scenario not in valid_scenarios:
+             raise ValueError(f"Invalid scenario: {scenario}. Valid scenarios are: {', '.join(valid_scenarios)}")
 
-        Params:
-            box: 2D array
-                Data about one bounding box in the shape of: 1 x 5
-                Columns must be in the format of (x1, y1, x2, y2, id)
-            img_shape: 1D array
-                Shape of the original frame in the format: (height, width, colour channels),
-                so passing in original_image.shape will do.
-            stop_threshold: float between 0 and 1
-                If the difference between box center and frame center over frame resolution is less than this threshold,
-                tell the robot to stop rotating, otherwise, the robot will be told to rotate at a rate proportional to
-                this ratio.
-            vertical_offset: float between 0 and 1
+        with open(person_json_path, 'r', encoding='utf-8') as file:
+            data = json.load(file)
+
+        person = data['person']
+        filtered_scenarios = []
+        
+        for scenario in person['scenarios']:
+            if scenario['scenario'] == scenario:
+                if 'questions' in scenario:
+                    del scenario['questions']
+                filtered_scenarios.append(scenario)
+        
+        new_data = {
+            "person": {
+                "name": person["name"],
+                "age": person["age"],
+                "gender": person["gender"],
+                "education": person["education"],
+                "major": person["major"],
+                "scenarios": filtered_scenarios
+            }
+        }
+        return new_data
+
+    def llm_response(self,path):
         """
-        if len(img_shape)!=3: # Check shape of image
-            raise Exception(f"The shape of the image does not equal to 3!")
+        Get the data from the llama
+        path: the path to the txt file
+        record: the record dict to store the information
+        return: the response from llama and the record[Conetnt, processing Time]
+        """
+        cur_time = time.time()
+        directory = os.path.dirname(path)
+        # If not exist, creat it
+        if not os.path.exists(directory):
+            os.makedirs(directory)
+        response = ""
+        while len(response) == 0:
+            with open(path, 'r', encoding='utf-8') as file:
+                content = file.read()
+            if len(content) != 0:
+                response = self.process_response_llama(content)
+                print('waiting for get response from cpp')
+                if len(response) > 0:
+                    end_time = time.time()
+                    response = response
+                    processTime = end_time - cur_time
+                    break
+        return response, processTime
 
-        if len(box)>1: # Check number of tracks
-            # If not 1, then the target is either lost, or went off-screen
-            #raise Exception(f"The length of box is {len(box)}, but it should be 1!")
-            # self.stop()
-            if self.target_person not in detected_Person:
-                print("Target Lost")
-                #self.target_lost()
-            else:
-                self.rotate_head_abs()
-        elif len(box) == 0:
-            # If the length of box is zero, that means Pepper just lost track of the target before it officially
-            # declares the target lost. In this window, we can still recover the track by making Pepper move towards
-            # wherever the target could've shifted to
-            # if self.vertical_ratio is not None and self.horizontal_ratio is not None and self.dl_model.target_id!=0:
-            #     self.walkToward(theta=self.horizontal_ratio*1.5)
-            pass
-        else: # If there's only 1 track, center the camera on them
-            # Since there's an extra dimension, we'll take the first element, which is just the single detection
-            face  = box[0]
-            box = face.bbox.astype(int) # from insight face
-            # Following shapes will be (x, y) format
-            box_center = np.array([box[2]/2+box[0]/2, box[1]*(1-vertical_offset)+box[3]*vertical_offset])#box[1]/2+box[3]/2])
-            frame_center = np.array((img_shape[1]/2, img_shape[0]/2))
-            #diff = box_center - frame_center
-            diff = frame_center - box_center
-            horizontal_ratio = diff[0]/img_shape[1]
-            vertical_ratio = diff[1]/img_shape[0]
-
-            # Saves a copy of the last ratio
-            self.vertical_ratio = vertical_ratio
-            self.horizontal_ratio = horizontal_ratio
-
-            if abs(horizontal_ratio) <= stop_threshold:
-                self.approach_target(box, img_shape, vertical_ratio)
+    def vision_thread(self):
+        while not self.stop_event.is_set():
+            self.frameCount += 1
+            print("Vision thread running")
+            img = self.get_image(save=True, path="./output", save_name="Pepper_Image")
+            prompt, detected_person, faces = self.process_image(img)
+            if detected_person:
+                self.eyeContact += 1
+            print(f"Detected person: {detected_person}")
+            self.detected_person = detected_person
+            self.prompt = prompt
+            time.sleep(1)  # Adjust the sleep time as needed
 
     def clear_audio_files(self):
+        """
+        Clear all the audio files in the server
+        """
         path = './../server/recordings'
-        # 检查目录中的每个文件
+
         for filename in os.listdir(path):
-            # 检查文件扩展名是否是.wav或.raw
+
             if filename.endswith('.wav') or filename.endswith('.raw'):
-                # 构建完整的文件路径
+
                 file_path = os.path.join(path, filename)
-                # 删除文件
+
                 os.remove(file_path)
                 print(f"Deleted {file_path}")
 
-    def process_response_llama(self, file_path):
+    def create_new_json_file(self,target_dir):
+        """
+        Create a new JSON file in the target directory to stores the conversation information in this experiment
+        """
 
+        files = os.listdir(target_dir)
+        json_files = [file for file in files if file.endswith('.json')]
+        json_count = len(json_files)
+        new_file_name = f'Test_{json_count + 1}.json'
+        new_file_path = os.path.join(target_dir, new_file_name)
+        initial_data = {"info": "This is a new JSON file."}
+        with open(new_file_path, 'w', encoding='utf-8') as new_file:
+            json.dump(initial_data, new_file, ensure_ascii=False, indent=4)
+        
+        print(f"New JSON file created: {new_file_path}")
+        return new_file_path
 
-        with open(file_path, 'r', encoding='utf-8') as file:
-            content = file.read()
-
+    def process_response_llama(self, content):
+        """
+        Read the response in the txt file, and proecess it as Robot and Speak stage. 
+        Detail: Find the response from Bob. Clean it and return
+        """
         # Search Bob: to "User: " or the end of the txt
-        match = re.search(r'Bob: (.*?)(?:User:|$)', content, re.DOTALL)
+        match = re.search(r': (.*?)(?:User:|$)', content, re.DOTALL)
+        #match = re.search(r'Bob: (.*?)(?:User:|$)', content, re.DOTALL)
         if not match:
             #print("No content found after 'Bob: '")
             return ""
@@ -292,7 +585,7 @@ class Client:
             
             # Construct the full file path with the correct extension
             file_path = os.path.join(path, f"{save_name}.jpg")
-            
+            print(f"file has been saved at {file_path}")
             # Attempt to save the image
             cv2.imwrite(file_path, img)
         return img
@@ -377,23 +670,27 @@ class Client:
             results = self.yolo.track(image, conf=0.5, persist=True, tracker='bytetrack.yaml', 
                                     verbose=False)
             detected_person, faces, prompt = self.face_recognition.recognition(image)
+            print(f"detected_person: {detected_person}")
+            print(len(faces))
+            print(f"prompt: {prompt}")
             #self.center_target(faces, image.shape)
             #print(f"len of faces: {len(faces)}")
-            self.center_target2(detected_person, faces, image.shape)
+            if len(faces) > 0:
+                self.center_target2(detected_person, faces, image.shape)
 
             if show:
                 frame = self.face_recognition.draw_on_with_name(image, faces, detected_person)
-                # cv2.imshow("InsightFace Inference", frame)
+                cv2.imshow("InsightFace Inference", frame)
             # Send message via pipe, only if the prompt is not 0
 
             return prompt, detected_person, faces # faces represent if this conversation have faces
             #print(f'Prompt is nothing : {prompt}')
         except Exception as e:
-            #print(f"An error occurred while processing the image: {e}")
+            print(f"An error occurred while processing the image: {e}")
             return
         
     
-    def process_audio(self, csv_path, lang='en', detected_person=None):
+    def process_audio(self, csv_path, lang='en', detected_person=None, llmOnly = False):
         """
         Whisper process audio file and pass the transcription result to llama visa pipe
         :return:
@@ -405,10 +702,11 @@ class Client:
             filename = self.get_audio()
         if filename:
             if os.path.exists(direct_path):
-                transcript = self.whisper.speech_to_text(direct_path, csv_path, lang, detected_person)
+                result = self.whisper.speech_to_text(direct_path, csv_path, lang, detected_person,llmOnly=llmOnly)
                 #os.remove(direct_path)
                 # return the transcript
-                return transcript if transcript else None
+                #return transcript if transcript else None
+                return result 
             print("Path not exist")
         return
 
