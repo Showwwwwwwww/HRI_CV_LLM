@@ -5,7 +5,7 @@ def communicateFlow(device=0):
     c.communicate_behavior()
     c.shutdown()
 
-def communicateFlow_thread(device=0):
+def communicateFlow_thread(device=1):
     c = Client(device = device)
     c.communicate_behavior2()
     c.shutdown()

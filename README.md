@@ -145,7 +145,7 @@ to be able to invoke the program.
 
 Example:
 ```
-CUDA_VISIBLE_DEVICES=1 ./main -m ./models/7B/ggml-model-q4_0.bin -n 512 --repeat_penalty 1.0 --color -i -r "User:" -f ./prompts/customisedChatPrompt.txt
+CUDA_VISIBLE_DEVICES=1 ./main -m ./models/7B/ggml-model-q4_0.bin -n 4096 --repeat_penalty 1.0 --color -i -r "User:" -f ./prompts/customisedChatPrompt.txt
 ```
 
 ## Naoqi Export

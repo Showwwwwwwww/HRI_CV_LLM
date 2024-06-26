@@ -17,7 +17,7 @@ import threading
 
 class Client:
 
-    def __init__(self, address='http://localhost:5001', device=0, **kwargs):
+    def __init__(self, address='http://localhost:5001', device=1, **kwargs):
         self.address = address
         self.vertical_ratio = None
         self.horizontal_ratio = None
@@ -27,14 +27,14 @@ class Client:
         print('Using device: {}'.format(self.device))
         # Initialize the Whisper,  FaceRecognition, and Yolo models
         #self.whisper = Whisper(gpu_id=self.device) # Use default medium model
-        self.whisper = Whisper(whisper_model="large-v2", gpu_id=self.device)
-        print('Whisper initialized')
+        # self.whisper = Whisper(whisper_model="large-v2", gpu_id=self.device)
+        # print('Whisper initialized')
         self.face_recognition = FaceRecognition(face_db='./database/face_db', gpu_id=self.device)
         #self.face_recognition = FaceRecognition(face_db='./database/face_db', gpu_id=0)
         print('face_recognition initialized')
-        self.yolo = YOLO('yolov8s.pt')
-        self.yolo.to(device=self.device)
-        print('YOLO initialized')
+        # self.yolo = YOLO('yolov8s.pt')
+        # self.yolo.to(device=self.device)
+        #print('YOLO initialized')
         self.audio_flag = ""
         self.previous_response = "None"
         self.audio_count = 0
@@ -49,6 +49,7 @@ class Client:
     # -------------------------------------------------------------------------------------------------------------------
     # Robot behavior ###################################################################################################
     # -------------------------------------------------------------------------------------------------------------------
+    
     def llm_vision_agent(self,person,scenario):
         """
         Threaded version of the communicate_behavior function
@@ -60,24 +61,58 @@ class Client:
         vision_thread.start()
         path_to_cpp = '/home/shuo/robot_research/output/exchange_information/py_to_cpp.txt'
         path_to_py = './../output/exchange_information/cpp_to_py.txt'
-        prompt = None
-        if person != 'ShuoChen': # Person Should Be either Stanger or ShuoChen
+        ccprompt = {"name": "Shuo `Chen`",
+                "age": 22,
+                "gender": "Male",
+                "education": "Monash University",
+                "major": "Computer Science",
+                "scenarios": [
+                    {
+                    "scenario": "Education",
+                    "role": "Student",
+                    "tutor_profile": {
+                        "learning_level": "College Student",
+                        "current_knowledge": {
+                        "topics_interested": ["Algorithms", "Data Structures", "Artificial Intelligence"],
+                        "prior_knowledge": {
+                            "Algorithms": "Basic understanding",
+                            "Data Structures": "Intermediate",
+                            "Artificial Intelligence": "Beginner"
+                        }
+                        },
+                        "learning_goals": ["Deepen understanding of AI", "Master advanced algorithms", "Improve coding skills"]
+                    }}]}
+        questions = [
+            "I want to understand artificial intelligence better, can you help me?",
+            "I'm having trouble learning algorithms, can you give me some advice?",
+            "Can you explain advanced concepts in data structures?",
+            "What exercises or resources do you recommend to improve my coding skills?",
+            "I already know some basic algorithms, can you give me some more advanced examples?"
+          ]
+        questin_index = 0
+        if person == 'ShuoChen': # Person Should Be either Stanger or ShuoChen
             # Read the content in the stored DataBase
             prompt = self.load_person_info('./Visual/face_db/people_info/people.json', scenario)
+            print(f"Prompt: {prompt}")
         try:
             while True:
                 round_info = {}
-                while not self.detected_person and self.sound_exceed_threshold(): # If have person and 
-                        round_info["Prompt"] = prompt or self.prompt 
-                        self.prompt = prompt or self.prompt
-
+                while True:
+                    if self.detected_person and self.sound_exceed_threshold(): # If have person and 
+                        round_info["Prompt"] = ccprompt
+                        #self.prompt = prompt or self.prompt
+                        break
                 self.say("Start recording audio")
+                c_time = time.time()
                 result = self.process_audio(csv_path='./../output/transcript/transcript_result.csv',
                                             detected_person=person) # This person will be either Stranger or ShuoChen
                 self.say("Audio recording finished")
-                transcript = result[0]
-                duration = result[1]
-                diff_time = result[2:]
+                transcript = person + 'says: ' + questions[questin_index]
+                duration = time.time() - c_time
+                diff_time = 0.6883219
+                # transcript = result[0]
+                # duration = result[1]
+                # diff_time = result[2:]
                 transcript_info = {}
                 transcript_info["Transcript"] = transcript
                 transcript_info["Audio Duration"] = duration
@@ -89,7 +124,7 @@ class Client:
                         os.makedirs(directory)
                     with open(path_to_cpp, "w") as f:
                         temp ='This is  information for the people who asking your question, you need to answer his question in 2 sentences what ever he asked,' 
-                        transcript = temp + self.prompt + 'He is asking question. '+ transcript 
+                        transcript = temp + ccprompt + 'He is asking question. '+ transcript 
                         f.write(transcript)
                         print(f'Transcript saved to {path_to_cpp}')
                         print(f'len of promot: {len(self.prompt)}')
@@ -98,6 +133,7 @@ class Client:
                     self.say("Sorry I have not heard anything")
 
                 # ------------> Llama <----------------
+                print("Waiting for response from Llama")
                 response_info = {}
                 if transcript or len(self.prompt) >0:
                     response = ""
@@ -185,7 +221,8 @@ class Client:
                     print("Clear path", path_to_py)
                     pass
                 if response != self.previous_response:
-                    self.say(response)
+                    self.say('Round Finished')
+                    #self.say(response)
                     self.previous_response = response
             except Exception as e:
                     print(f"An error occured whic receiving the response from C++{e}")
@@ -350,6 +387,7 @@ class Client:
                     response = ""
                     try:
                         response, processTime = self.llm_response(path_to_py)
+                        print('llama response:', response)
                         response_info["Llama response"] = response
                         response_info["Response Time"] = processTime
                         with open(path_to_py, "w") as f:
@@ -667,8 +705,8 @@ class Client:
             if image is None:
                 image = self.get_image()
             #print("Image shape:", image.shape)
-            results = self.yolo.track(image, conf=0.5, persist=True, tracker='bytetrack.yaml', 
-                                    verbose=False)
+            # results = self.yolo.track(image, conf=0.5, persist=True, tracker='bytetrack.yaml', 
+            #                         verbose=False)
             detected_person, faces, prompt = self.face_recognition.recognition(image)
             print(f"detected_person: {detected_person}")
             print(len(faces))
@@ -702,11 +740,12 @@ class Client:
             filename = self.get_audio()
         if filename:
             if os.path.exists(direct_path):
-                result = self.whisper.speech_to_text(direct_path, csv_path, lang, detected_person,llmOnly=llmOnly)
+                #result = self.whisper.speech_to_text(direct_path, csv_path, lang, detected_person,llmOnly=llmOnly)
                 #os.remove(direct_path)
                 # return the transcript
                 #return transcript if transcript else None
-                return result 
+                return ''
+                #return result 
             print("Path not exist")
         return
 

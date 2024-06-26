@@ -1,106 +1,68 @@
-import qi
-import argparse
-import sys
+import os
 import time
-import numpy as np
+import json
 
+def dict_to_string(dictionary):
+    return json.dumps(dictionary, ensure_ascii=False)
 
-class SoundProcessingModule(object):
-    """
-    A simple get signal from the front microphone of Nao & calculate its rms power.
-    It requires numpy.
-    """
+info = {
+    "name": "Shuo Chen",
+    "age": 22,
+    "gender": "Male",
+    "education": "Monash University",
+    "major": "Computer Science",
+    "scenarios": [
+        {
+            "scenario": "Education",
+            "role": "Student",
+            "tutor_profile": {
+                "learning_level": "College Student",
+                "current_knowledge": {
+                    "topics_interested": ["Algorithms", "Data Structures", "Artificial Intelligence"],
+                    "prior_knowledge": {
+                        "Algorithms": "Basic understanding",
+                        "Data Structures": "Intermediate",
+                        "Artificial Intelligence": "Beginner"
+                    }
+                },
+                "learning_goals": ["Deepen understanding of AI", "Master advanced algorithms", "Improve coding skills"]
+            }
+        }
+    ]
+}
 
-    def __init__( self, app):
-        """
-        Initialise services and variables.
-        """
-        super(SoundProcessingModule, self).__init__()
-        app.start()
-        session = app.session
+prefix = 'This is information for the people who is asking your questions.  '
+questions = [
+    "I want to understand artificial intelligence better, can you help me?",
+    "I'm having trouble learning algorithms, can you give me some advice?",
+    "Can you explain advanced concepts in data structures?",
+    "What exercises or resources do you recommend to improve my coding skills?",
+    "I already know some basic algorithms, can you give me some more advanced examples?"
+]
 
-        # Get the service ALAudioDevice.
-        self.audio_service = session.service("ALAudioDevice")
-        self.isProcessingDone = False
-        self.nbOfFramesToProcess = 20
-        self.framesCount=0
-        self.micFront = []
-        self.module_name = "SoundProcessingModule"
+file_path = 'output/exchange_information/py_to_cpp.txt'
+info = dict_to_string(info)
+count = 0
 
-    def startProcessing(self):
-        """
-        Start processing
-        """
-        # ask for the front microphone signal sampled at 16kHz
-        # if you want the 4 channels call setClientPreferences(self.module_name, 48000, 0, 0)
-        self.audio_service.setClientPreferences(self.module_name, 16000, 3, 0)
-        self.audio_service.subscribe(self.module_name)
+while count < 5:
+    content = prefix + info + ' He is asking a question: ' + questions[count]
+    input("Press Enter to continue...")
 
-        while self.isProcessingDone == False:
+    x = time.time()
+    while True:
+        # Check if the file exists and if it is empty
+        if os.path.exists(file_path) and os.path.getsize(file_path) == 0:
+            with open(file_path, 'w') as file:
+                file.write(content)
+                break  # Exit the loop after writing the content
+        elif not os.path.exists(file_path):
+            with open(file_path, 'w') as file:
+                file.write(content)
+                break  # Exit the loop after writing the content
+        else:
+            # Optional: Sleep for a short time to avoid busy waiting
             time.sleep(1)
 
-        self.audio_service.unsubscribe(self.module_name)
-
-    def processRemote(self, nbOfChannels, nbOfSamplesByChannel, timeStamp, inputBuffer):
-        """
-        Compute RMS from mic.
-        """
-        self.framesCount = self.framesCount + 1
-
-        if (self.framesCount <= self.nbOfFramesToProcess):
-            # convert inputBuffer to signed integer as it is interpreted as a string by python
-            self.micFront=self.convertStr2SignedInt(inputBuffer)
-            #compute the rms level on front mic
-            rmsMicFront = self.calcRMSLevel(self.micFront)
-            print "rms level mic front = " + str(rmsMicFront)
-        else :
-            self.isProcessingDone=True
-
-    def calcRMSLevel(self,data) :
-        """
-        Calculate RMS level
-        """
-        rms = 20 * np.log10( np.sqrt( np.sum( np.power(data,2) / len(data)  )))
-        return rms
-
-    def convertStr2SignedInt(self, data) :
-        """
-        This function takes a string containing 16 bits little endian sound
-        samples as input and returns a vector containing the 16 bits sound
-        samples values converted between -1 and 1.
-        """
-        signedData=[]
-        ind=0
-        for i in range (0,len(data)/2) :
-            signedData.append(data[ind]+data[ind+1]*256)
-            ind=ind+2
-
-        for i in range (0,len(signedData)) :
-            if signedData[i]>=32768 :
-                signedData[i]=signedData[i]-65536
-
-        for i in range (0,len(signedData)) :
-            signedData[i]=signedData[i]/32768.0
-
-        return signedData
-
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--ip", type=str, default="127.0.0.1",
-                        help="Robot IP address. On robot or Local Naoqi: use '127.0.0.1'.")
-    parser.add_argument("--port", type=int, default=9559,
-                        help="Naoqi port number")
-
-    args = parser.parse_args()
-    try:
-        # Initialize qi framework.
-        connection_url = "tcp://" + args.ip + ":" + str(args.port)
-        app = qi.Application(["SoundProcessingModule", "--qi-url=" + connection_url])
-    except RuntimeError:
-        print ("Can't connect to Naoqi at ip \"" + args.ip + "\" on port " + str(args.port) +".\n"
-               "Please check your script arguments. Run with -h option for help.")
-        sys.exit(1)
-    MySoundProcessingModule = SoundProcessingModule(app)
-    app.session.registerService("SoundProcessingModule", MySoundProcessingModule)
-    MySoundProcessingModule.startProcessing()
+    count += 1
+    # Print the time taken for the operation
+    print(f'Time is: {time.time() - x}')

@@ -39,7 +39,11 @@ class Whisper:
         self.MODEL_NAME = MODEL_NAME
         lang = "en"
         device = gpu_id if torch.cuda.is_available() else "cpu"
-        print(f"Using device: {device}")
+        print(f"Whisper Using device: {device}")
+        torch.cuda.init()
+        # print(torch.cuda.memory_summary(device=device, abbreviated=False))
+        # if torch.cuda.is_available():
+        #     torch.cuda.synchronize()
         self.pipe = pipeline(
             task="automatic-speech-recognition",
             model=MODEL_NAME,
@@ -71,7 +75,7 @@ class Whisper:
 
         return warn_output + text
 
-    def speech_to_text(self, audio_file, save_path,selected_source_lang, joined_person, llmOnly = False):
+    def speech_to_text(self, audio_file, save_path,selected_source_lang, joined_person, llmOnly=False):
         """
         1. Using Open AI's Whisper model to seperate audio into segments and generate transcripts.
         2. Generating speaker embeddings for each segments.
