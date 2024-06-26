@@ -1,3 +1,6 @@
+.idea/
+.stfolder/
+.vscode/
 llama2/llama_new/
 llama2/llama-2-7b-chat/
 llama2/llama-2-13b-chat/
@@ -7,9 +10,12 @@ client/output
 client/Visual/face_db
 output/
 server/recordings
+testFlask.py
 *.wav
 *.pyc
 *.raw
 *.pt
 *.jpg
 *.json
+moduleTest.py
+test.py
