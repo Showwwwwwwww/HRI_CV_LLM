@@ -19,4 +19,5 @@ testFlask.py
 *.json
 moduleTest.py
 test.py
-.Pepper/
+*.pyc
+__pycache__/
