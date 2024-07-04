@@ -25,32 +25,22 @@ class Client:
         self.address = address
         self.vertical_ratio = None
         self.horizontal_ratio = None
-        self.last_box = None
-        self.current_target = 'unknown'
         self.device = device if torch.cuda.is_available() else 'cpu'
         print('Using device: {}'.format(self.device))
-        # Initialize the Whisper,  FaceRecognition, and Yolo models
+
+        
         #self.whisper = Whisper(gpu_id=self.device) # Use default medium model
         self.whisper = Whisper(whisper_model="large-v2", gpu_id=self.device)
         print('Whisper initialized')
         self.face_recognition = FaceRecognition2(face_db='./database/face_db', gpu_id=self.device)
-        #self.face_recognition = FaceRecognition(face_db='./database/face_db', gpu_id=device)
-        print('face_recognition initialized')
-        # self.yolo = YOLO('yolov8s.pt')
-        # self.yolo.to(device=self.device)
-        #print('YOLO initialized')
+        print('Face Module initialized')
         self.llm = llm()
-        self.audio_flag = ""
-        self.previous_response = "None"
+        print('LLM delpoy Success')
+
         self.audio_count = 0
         self.json_path = self.create_new_json_file('./output')
         self.stop_event = threading.Event()
-        self.detected_person = None
-        self.prompt = None
-        self.face = None
         self.lock = threading.Lock()
-        self.frameCount = 0
-        self.eyeContact = 0
 
     # -------------------------------------------------------------------------------------------------------------------
     # Robot behavior ###################################################################################################
@@ -198,10 +188,11 @@ class Client:
         horizontal_ratio = diff[0]/img_shape[1]
         vertical_ratio = diff[1]/img_shape[0]
         print(f"Horizontal ratio: {horizontal_ratio}, Vertical ratio: {vertical_ratio}")
+
         # Saves a copy of the last ratio
         self.vertical_ratio = vertical_ratio
         self.horizontal_ratio = horizontal_ratio
-        # print(f"Horizontal ratio: {horizontal_ratio}, Vertical ratio: {vertical_ratio}")
+        print(f"Horizontal ratio: {horizontal_ratio}, Vertical ratio: {vertical_ratio}")
 
         if abs(horizontal_ratio) >= stop_threshold or abs(vertical_ratio) >= vertical_offset:
             print("Rotate Head")

@@ -7,11 +7,12 @@ def communicateFlow(device=0):
 
 def communicateFlow_thread(device=1):
     c = Client(device = device)
-    c.communicate_behavior2()
+    print("Client initizalized")
+    c.communicate_behavior3()
     c.shutdown()
 
 def head_tracking():
-    c = Client(device = 0)
+    c = Client(device = 1)
     count = 0
     while count < 100:
         img = c.get_image(save=True,path="./output",save_name="Pepper_Image")
