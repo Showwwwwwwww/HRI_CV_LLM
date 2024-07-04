@@ -54,7 +54,7 @@ class CameraManager():
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--ip", type=str, default="192.168.43.183",
+    parser.add_argument("--ip", type=str, default="192.168.0.52",
                         help="Robot IP address. On robot or Local Naoqi: use '192.168.137.26'.")
     parser.add_argument("--port", type=int, default=9559,
                         help="Naoqi port number")
@@ -75,6 +75,10 @@ if __name__ == "__main__":
     frames = 60
     for _ in range(frames):
         img = manager.get_image(raw=False)
+        if img:
+            print "1"
+        else:
+            print "0"
         # real_img = Image.frombuffer('RGB', (img[0], img[1]), bytes(img[6]))
     end = time.time() - start
     print "It took " + str(end) + " to take " + str(frames)  + " photos and send to server, achieving " + str(frames/end) + "FPS."

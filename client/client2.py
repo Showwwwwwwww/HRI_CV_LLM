@@ -5,8 +5,9 @@ import requests
 import io
 import base64
 from PIL import Image
-from ultralytics import YOLO
-from Visual.detection import FaceRecognition
+# from ultralytics import YOLO
+from Visual.detection2 import FaceRecognition2
+#from Visual.detection import FaceRecognition
 from Whisper_speaker_diarization.whisper import Whisper
 import torch
 import traceback
@@ -14,6 +15,9 @@ import time
 import re
 import json
 import threading
+from llmControl import llm
+
+
 
 class Client:
 
@@ -27,14 +31,15 @@ class Client:
         print('Using device: {}'.format(self.device))
         # Initialize the Whisper,  FaceRecognition, and Yolo models
         #self.whisper = Whisper(gpu_id=self.device) # Use default medium model
-        # self.whisper = Whisper(whisper_model="large-v2", gpu_id=self.device)
-        # print('Whisper initialized')
-        self.face_recognition = FaceRecognition(face_db='./database/face_db', gpu_id=self.device)
-        #self.face_recognition = FaceRecognition(face_db='./database/face_db', gpu_id=0)
+        self.whisper = Whisper(whisper_model="large-v2", gpu_id=self.device)
+        print('Whisper initialized')
+        self.face_recognition = FaceRecognition2(face_db='./database/face_db', gpu_id=self.device)
+        #self.face_recognition = FaceRecognition(face_db='./database/face_db', gpu_id=device)
         print('face_recognition initialized')
         # self.yolo = YOLO('yolov8s.pt')
         # self.yolo.to(device=self.device)
         #print('YOLO initialized')
+        self.llm = llm()
         self.audio_flag = ""
         self.previous_response = "None"
         self.audio_count = 0
@@ -49,184 +54,6 @@ class Client:
     # -------------------------------------------------------------------------------------------------------------------
     # Robot behavior ###################################################################################################
     # -------------------------------------------------------------------------------------------------------------------
-    
-    def llm_vision_agent(self,person,scenario):
-        """
-        Threaded version of the communicate_behavior function
-        """
-        rounds_data = {}
-        dic_count = 0
-        self.clear_audio_files()
-        vision_thread = threading.Thread(target=self.vision_thread)
-        vision_thread.start()
-        path_to_cpp = '/home/shuo/robot_research/output/exchange_information/py_to_cpp.txt'
-        path_to_py = './../output/exchange_information/cpp_to_py.txt'
-        ccprompt = {"name": "Shuo `Chen`",
-                "age": 22,
-                "gender": "Male",
-                "education": "Monash University",
-                "major": "Computer Science",
-                "scenarios": [
-                    {
-                    "scenario": "Education",
-                    "role": "Student",
-                    "tutor_profile": {
-                        "learning_level": "College Student",
-                        "current_knowledge": {
-                        "topics_interested": ["Algorithms", "Data Structures", "Artificial Intelligence"],
-                        "prior_knowledge": {
-                            "Algorithms": "Basic understanding",
-                            "Data Structures": "Intermediate",
-                            "Artificial Intelligence": "Beginner"
-                        }
-                        },
-                        "learning_goals": ["Deepen understanding of AI", "Master advanced algorithms", "Improve coding skills"]
-                    }}]}
-        questions = [
-            "I want to understand artificial intelligence better, can you help me?",
-            "I'm having trouble learning algorithms, can you give me some advice?",
-            "Can you explain advanced concepts in data structures?",
-            "What exercises or resources do you recommend to improve my coding skills?",
-            "I already know some basic algorithms, can you give me some more advanced examples?"
-          ]
-        questin_index = 0
-        if person == 'ShuoChen': # Person Should Be either Stanger or ShuoChen
-            # Read the content in the stored DataBase
-            prompt = self.load_person_info('./Visual/face_db/people_info/people.json', scenario)
-            print(f"Prompt: {prompt}")
-        try:
-            while True:
-                round_info = {}
-                while True:
-                    if self.detected_person and self.sound_exceed_threshold(): # If have person and 
-                        round_info["Prompt"] = ccprompt
-                        #self.prompt = prompt or self.prompt
-                        break
-                self.say("Start recording audio")
-                c_time = time.time()
-                result = self.process_audio(csv_path='./../output/transcript/transcript_result.csv',
-                                            detected_person=person) # This person will be either Stranger or ShuoChen
-                self.say("Audio recording finished")
-                transcript = person + 'says: ' + questions[questin_index]
-                duration = time.time() - c_time
-                diff_time = 0.6883219
-                # transcript = result[0]
-                # duration = result[1]
-                # diff_time = result[2:]
-                transcript_info = {}
-                transcript_info["Transcript"] = transcript
-                transcript_info["Audio Duration"] = duration
-                transcript_info["Processing Time"] = diff_time
-                round_info["Audio Info"] = transcript_info
-                if transcript:
-                    directory = os.path.dirname(path_to_cpp)
-                    if not os.path.exists(directory):
-                        os.makedirs(directory)
-                    with open(path_to_cpp, "w") as f:
-                        temp ='This is  information for the people who asking your question, you need to answer his question in 2 sentences what ever he asked,' 
-                        transcript = temp + ccprompt + 'He is asking question. '+ transcript 
-                        f.write(transcript)
-                        print(f'Transcript saved to {path_to_cpp}')
-                        print(f'len of promot: {len(self.prompt)}')
-                    print(transcript)
-                else:
-                    self.say("Sorry I have not heard anything")
-
-                # ------------> Llama <----------------
-                print("Waiting for response from Llama")
-                response_info = {}
-                if transcript or len(self.prompt) >0:
-                    response = ""
-                    try:
-                        response, processTime = self.llm_response(path_to_py)
-                        response_info["Llama response"] = response
-                        response_info["Response Time"] = processTime
-                        with open(path_to_py, "w") as f:
-                            print("Clear path", path_to_py)
-                            pass
-                        if response != self.previous_response:
-                            self.say(response)
-                            self.previous_response = response
-                    except Exception as e:
-                        print(f"An error occured whic receiving the response from C++{e}")
-                round_info["Response Info"] = response_info 
-                rounds_data[f"Round{dic_count}"] = round_info # We save this the information in this round to the big frame data
-                with open(self.json_path, 'w') as f:
-                    json.dump(rounds_data, f, indent=4) # Save it each time
-                dic_count+=1
-
-
-        except KeyboardInterrupt:
-            print("Process interrupted by user.")
-            self.stop_event.set()
-            vision_thread.join()
-            rounds_data[f"Round{dic_count}"] = round_info
-            with open(self.json_path, 'w') as f:
-                json.dump(rounds_data, f, indent=4)
-            self.shutdown()
-
-        except Exception as e:
-            print(f"An error occurred: {e}")
-            self.stop_event.set()
-            vision_thread.join()
-            traceback.print_exc()
-            with open(self.json_path, 'w') as f:
-                json.dump(rounds_data, f, indent=4)
-            self.shutdown()
-    def llm_only_agent(self):
-        """
-        This agent will utilize the Whisper Model, LLama and Robot to complete the communciatio behavior
-        """
-        # Set up the communicate the txt
-        path_to_cpp = '/home/shuo/robot_research/output/exchange_information/py_to_cpp.txt'
-        path_to_py = './../output/exchange_information/cpp_to_py.txt'
-
-        # Start the communication
-        while True:
-            round_info = {}
-            while not self.sound_exceed_threshold():
-                # Continue Looping until the sound exceed the threshold
-                pass
-            print("Audio Recoding Start")      
-            result = self.process_audio(csv_path='./../output/transcript/transcript_result.csv',
-                                        detected_person= None,llmOnly=True)   #  The result will be format as Speaker Name Says: "Transcript"
-            print("Audio Recoding Finished")
-            transcript = result[0]
-            duration = result[1]
-            diff_time = result[2:]
-            transcript_info = {}
-            transcript_info["Transcript"] = transcript
-            transcript_info["Audio Duration"] = duration
-            transcript_info["Processing Time"] = diff_time
-            round_info["Audio Info"] = transcript_info
-            if transcript:
-                    directory = os.path.dirname(path_to_cpp)
-                    if not os.path.exists(directory):
-                        os.makedirs(directory)
-                    with open(path_to_cpp, "w") as f:
-                        f.write(transcript)
-                        print(f'Transcript saved to {path_to_cpp}')
-                    print(transcript)
-            else:
-                self.say("Sorry I have not heard anything")
-                continue
-            # ------------> Llama <----------------
-            response_info = {}
-            response = ""
-            try:
-                response, processTime = self.llm_response(path_to_py) # Get the response from llama
-                response_info["Llama response"] = response
-                response_info["Response Time"] = processTime
-                with open(path_to_py, "w") as f:
-                    print("Clear path", path_to_py)
-                    pass
-                if response != self.previous_response:
-                    self.say('Round Finished')
-                    #self.say(response)
-                    self.previous_response = response
-            except Exception as e:
-                    print(f"An error occured whic receiving the response from C++{e}")
-            
     def communicate_behavior(self):
         """
         The main function which contains all the behavior of the robot
@@ -339,7 +166,7 @@ class Client:
         rounds_data = {}
         dic_count = 0
         self.clear_audio_files()
-        vision_thread = threading.Thread(target=self.vision_thread)
+        vision_thread = threading.Thread(target=self.vision_thread2)
         vision_thread.start()
         path_to_cpp = '/home/shuo/robot_research/output/exchange_information/py_to_cpp.txt'
         path_to_py = './../output/exchange_information/cpp_to_py.txt'
@@ -424,6 +251,72 @@ class Client:
             self.shutdown()
 
 
+    def communicate_behavior3(self):
+        rounds_data = {}
+        dic_count = 0
+        self.clear_audio_files()
+        vision_thread = threading.Thread(target=self.vision_thread)
+        vision_thread.start()
+        prompt = None
+        try:
+            while True:
+                round_info = {}
+                while True:
+                    interactPerson = self.face_recognition.get_target_name()
+                    if interactPerson and self.sound_exceed_threshold():
+                        round_info["Detected person"] = interactPerson
+                        round_info["Prompt"] = self.prompt or None
+                        break
+                self.say("Start recording audio")
+                result = self.process_audio(csv_path='./../output/transcript/transcript_result.csv',
+                                            detected_person=interactPerson)
+                self.say("Audio recording finished")
+                transcript = result[0]
+                duration = result[1]
+                diff_time = result[2:]
+                transcript_info = {}
+                transcript_info["Transcript"] = transcript
+                transcript_info["Audio Duration"] = duration
+                transcript_info["Processing Time"] = diff_time
+                round_info["Audio Info"] = transcript_info
+                if transcript:
+                    start_time = time.time()
+                    response = self.llm.talkTollm(interactPerson,transcript)
+                    response_time = time.time() - start_time
+                    print(f'{interactPerson} say : {transcript}')
+                    self.say(response)
+                    print(f'Pepper say: {response}')
+                    round_info["Response Info"] = response
+                    round_info["Response Time"] = response_time
+                    #print(transcript)
+                else:
+                    self.say("Sorry I have not heard anything")
+                round_info['Eye Contact Rate'] = self.eyeContact / self.frameCount
+                rounds_data[f"Round{dic_count}"] = round_info # We save this the information in this round to the big frame data
+                # with open(self.json_path, 'w') as f:
+                #     json.dump(rounds_data, f, indent=4) # Save it each time
+                dic_count+=1
+        except KeyboardInterrupt:
+            print("Process interrupted by user.")
+            self.stop_event.set()
+            vision_thread.join()
+            #round_info['Eye Contact Rate'] = self.eyeContact / self.frameCount
+            rounds_data[f"Round{dic_count}"] = round_info
+            with open(self.json_path, 'w') as f:
+                json.dump(rounds_data, f, indent=4)
+            self.shutdown()
+
+        except Exception as e:
+            print(f"An error occurred: {e}")
+            self.stop_event.set()
+            vision_thread.join()
+            traceback.print_exc()
+            with open(self.json_path, 'w') as f:
+                json.dump(rounds_data, f, indent=4)
+            self.shutdown()
+
+
+
     # -------------------------------------------------------------------------------------------------------------------
     # Information Process  ###################################################################################################
     # -------------------------------------------------------------------------------------------------------------------
@@ -483,17 +376,48 @@ class Client:
         return response, processTime
 
     def vision_thread(self):
-        while not self.stop_event.is_set():
-            self.frameCount += 1
+        """
+        Functionality: 1. ReID, 2. Detect if person currently in the frame 
+        """
+        while not self.stop_event.is_set(): 
+            #self.frameCount += 1
+            print("Vision thread running")
+            frame = self.get_image(save=True, path="./output", save_name="Pepper_Image")
+            detecedPerson,track_id, face = self.face_recognition.process_frame(frame,show=True)
+            if face: # If there is face return, we return the position and reset the 
+                self.center_target(face, frame.shape)
+            if self.face_recognition.person_matching(detecedPerson,track_id): # Current person = Previous, but ID not matched 
+                continue
+            else: # Person changed, or no person in the frame 
+                flag = True
+                for _ in range(2): 
+                    frame = self.get_image(save=True, path="./output", save_name="Pepper_Image")
+                    check_person,track_id,face = self.face_recognition.process_frame(frame,show=True)
+                    if check_person == detecedPerson:
+                        continue
+                    else:
+                        print(f'Check_person: {check_person}, DetectedPerson: {detecedPerson}')
+                        flag = False
+                        break
+                if flag: # if success, update the name 
+                    self.face_recognition.set_target_id(track_id) # People not changed, but the id changed 
+                    self.face_recognition.set_target_name(check_person) # Update the current people in the framem, either None or the person name 
+            
+            time.sleep(1)  # Adjust the sleep time as needed
+    
+    def vision_thread2(self):
+        while not self.stop_event.is_set(): 
+            #self.frameCount += 1
             print("Vision thread running")
             img = self.get_image(save=True, path="./output", save_name="Pepper_Image")
             prompt, detected_person, faces = self.process_image(img)
-            if detected_person:
-                self.eyeContact += 1
+            # if detected_person:
+            #     self.eyeContact += 1
             print(f"Detected person: {detected_person}")
             self.detected_person = detected_person
             self.prompt = prompt
             time.sleep(1)  # Adjust the sleep time as needed
+        
 
     def clear_audio_files(self):
         """
@@ -550,7 +474,30 @@ class Client:
         print(cleaned_text)
         # Return the txt, and remove the empty space
         return ' '.join(cleaned_text.strip().split())
+    
 
+    def center_target(self, face, img_shape, stop_threshold = 0.5, vertical_offset=0.5):
+        box = face.bbox.astype(int)
+        box_center = np.array([box[2]/2+box[0]/2, box[1]*(1-vertical_offset)+box[3]*vertical_offset])#box[1]/2+box[3]/2])
+        frame_center = np.array((img_shape[1]/2, img_shape[0]/2))
+        #diff = box_center - frame_center
+        # print(f"box_center: {box_center}, frame_center: {frame_center}")
+
+        diff = frame_center - box_center
+        horizontal_ratio = diff[0]/img_shape[1]
+        vertical_ratio = diff[1]/img_shape[0]
+        print(f"Horizontal ratio: {horizontal_ratio}, Vertical ratio: {vertical_ratio}")
+        # Saves a copy of the last ratio
+        self.vertical_ratio = vertical_ratio
+        self.horizontal_ratio = horizontal_ratio
+        # print(f"Horizontal ratio: {horizontal_ratio}, Vertical ratio: {vertical_ratio}")
+
+        if abs(horizontal_ratio) >= stop_threshold or abs(vertical_ratio) >= vertical_offset:
+            print("Rotate Head")
+            self.rotate_head(forward=-(vertical_ratio*0.3),left= horizontal_ratio*0.4)
+            #self.approach_target(box, img_shape, vertical_ratio,horizontal_ratio)
+        else:
+            print("Not Rotate Head")
 
     def center_target2(self, detected_persons, boxes, img_shape, stop_threshold = 0.5, vertical_offset=0.5):
         """
@@ -791,4 +738,5 @@ class Client:
     def shutdown(self):
         headers = {'content-type': "/setup/end"}
         response = requests.post(self.address + headers["content-type"], headers=headers)
+
 
