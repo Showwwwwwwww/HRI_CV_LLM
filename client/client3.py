@@ -14,6 +14,7 @@ from llmControl import llm
 from Visual.detection2 import FaceRecognition2
 from Whisper_speaker_diarization.whisper import Whisper
 
+import time
 import logging
 
 logging.basicConfig(level=logging.INFO)
@@ -22,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 class Client:
 
-    def __init__(self, address='http://localhost:5001', device=1, **kwargs):
+    def __init__(self, address='http://localhost:5001', device='cuda', **kwargs):
         self.address = address
         self.vertical_ratio = None
         self.horizontal_ratio = None
@@ -31,16 +32,20 @@ class Client:
 
         self.whisper = Whisper(whisper_model="large-v2", gpu_id=self.device)
         logger.info('Whisper initialized')
-        self.face_recognition = FaceRecognition2(face_db='./database/face_db', gpu_id=self.device)
+        self.face_recognition = FaceRecognition2(face_db='./database/face_db', cuda=self.device)
         logger.info('Face Module initialized')
         self.llm = llm()
         logger.info('LLM deployed successfully')
 
         self.interact_person = None
+        self.person_age = None
+        self.person_sex = None
+
         self.audio_count = 0
         self.json_path = self.create_new_json_file('./output')
         self.stop_event = threading.Event()
         self.lock = threading.Lock()
+        self.current_color = None
 
     def communicate_behavior3(self):
         rounds_data = {}
@@ -69,13 +74,30 @@ class Client:
                 interactPerson = self.interact_person 
                 #print(f'Interacted person is {interactPerson}')
             sound = self.get_sound()
-            if interactPerson and sound > 300:
-                round_info["Detected person"] = interactPerson
-                break
-        self.set_eyes_red()
-        #self.llm.initialize_llm_talk(interactPerson)
+            if interactPerson:
+                if interactPerson == self.llm.last_person: # Person was in the frame, just speaking
+                    self.set_eyes_green()
+                    if sound > 300:
+                        round_info["Detected person"] = interactPerson
+                        break
+                else:
+                    #self.set_eyes_blue() # Original color
+                    self.set_eyes_red() # Think
+                    initalize_conversation = self.llm.initialize_llm_talk(person=interactPerson, age=self.person_age,
+                                                                        gender=self.person_sex)
+                    self.set_eyes_green()
+                    self.say(initalize_conversation)
+            # else:
+            #     #self.set_eyes_green() # Original color
+            #     self.set_eyes_blue() # No one in the frame
+        # initalize_conversation = self.llm.initialize_llm_talk(person =interactPerson, age = self.person_age, gender = self.person_sex)
+        # if initalize_conversation:
+        #     self.say(initalize_conversation)
+        #self.set_eyes_red() # Original color
+        self.set_eyes_green()
         result = self.process_audio(csv_path='./../output/transcript/transcript_result.csv', detected_person=interactPerson)
-        self.set_eyes_blue()
+        #self.set_eyes_blue() # Original color
+        self.set_eyes_red()
         if result is not None:
             transcript = result[0]
             duration = result[1]
@@ -89,6 +111,7 @@ class Client:
             start_time = time.time()
             response = self.llm.talkTollm(interactPerson, transcript)
             response_time = time.time() - start_time
+            self.set_eyes_green()
             self.say(response)
             round_info["Response Info"] = response
             round_info["Response Time"] = response_time
@@ -97,41 +120,61 @@ class Client:
         return round_info
 
     def vision_thread(self):
-        self.set_eyes_blue()
         logger.info("Vision thread started")
         x = 0
         while not self.stop_event.is_set():
             frame = self.get_image(save=True, path="./output", save_name="Pepper_Image", show=True)
-            detectedPerson, track_id, face = self.face_recognition.process_frame(frame, show=False)
-            logger.info(f'detected person: {detectedPerson}')
-            self.center_target2(detectedPerson, face, frame.shape)
-            if self.face_recognition.person_matching(detectedPerson, track_id):
-                print(x)
-                x += 1 
+            detectedPerson, track_id, face_box = self.face_recognition.process_frame(frame, show=False) # Person, ID, bounding box frame
+            if detectedPerson and  x > 5: # Person detected do each 5 frame
+                logger.info(f'detected person: {detectedPerson}, with center target')
+                box = self.face_recognition.extractBox(frame)
+                self.center_target2(detectedPerson, box, frame.shape)
+                x = 0
+            x += 1
+            flag = False
+            tic = time.time()
+            match = self.face_recognition.person_matching(detectedPerson, track_id) # Person match with the last target person or not
+            #print(f"Time taken for matching: {time.time() - tic}")
+            if match: # Person name match
                 continue
             else: # Find the mismatch, we do two more comparsion 
-                flag = True
+                #flag = True
                 check_id = track_id
                 for _ in range(2):
                     frame = self.get_image(save=True, path="./output", save_name="Pepper_Image")
-                    check_person, check_id, face = self.face_recognition.process_frame(frame, show=False)
+                    check_person, check_id, _ = self.face_recognition.process_frame(frame, show=False)
                     if check_person == detectedPerson:
-                        continue
+                        flag = True
                     else:
                         logger.info(f'Check_person: {check_person}, DetectedPerson: {detectedPerson}')
                         flag = False
                         break
-                if flag:
-                    track_id = check_id
-                    # if self.face_recognition.mismatch_name:
-                    #     self.face_recognition.save_cropped_image()
+                if flag: # Update the information for the target person
+                    track_id = check_id # Update ID
+                    if self.face_recognition.mismatch_name:
+                        self.face_recognition.save_cropped_image()
                     #with self.lock:
-                    self.face_recognition.set_target_id(track_id)
-                    self.face_recognition.set_target_name(check_person)
+                    self.face_recognition.target_id = track_id
+                    self.face_recognition.target_name = check_person
+                    logger.info(f'Target ID: {self.face_recognition.target_id } changed to Target {track_id} due to three time matching')
+                    logger.info(
+                        f'Target name: {self.face_recognition.target_name} changed to Target {check_person} due to three time matching')
+                    #self.face_recognition.set_target_id(track_id)
+                    #self.face_recognition.set_target_name(check_person)
             with self.lock:
-                self.interact_person = self.face_recognition.get_target_name()
-                logger.info(f' Interact_person is : {self.interact_person}')
+                if flag: # Update the interaction_person and the relates info
+                    logger.info(f' Interact_person is  changed from :{self.interact_person} to  {self.face_recognition.target_name}')
+                    logger.info(f' Interact_person estimated age is {self.face_recognition.mismatch_age}')
+                    logger.info(f' Interact_person estimated gender is {self.face_recognition.mismatch_sex}')
+                    self.interact_person = self.face_recognition.target_name
+                    self.person_age = self.face_recognition.mismatch_age
+                    self.person_sex = self.face_recognition.mismatch_sex
 
+            if self.face_recognition.target_name is None: # No person in the frame, so we rotate it to the abs position
+                logger.info(f'No Person in the frame and we need to change the location for it')
+                #self.set_eyes_green() #
+                #self.rotate_head_abs()
+            #time.sleep(1)
     def clear_audio_files(self):
         path = './../server/recordings'
         for filename in os.listdir(path):
@@ -154,11 +197,9 @@ class Client:
 
     def center_target2(self, detected_persons, boxes, img_shape, stop_threshold=0.5, vertical_offset=0.5):
         if not detected_persons or boxes is None or len(boxes) == 0:
-            #print("No person detected")
-            #logger.info("No person detected")
             pass
         else:
-            print(f"Person detected: {detected_persons}")
+            #print(f"Person detected: {detected_persons}")
             # face = boxes[0]
             # box = face.bbox.astype(int)
             box = boxes
@@ -167,11 +208,10 @@ class Client:
             diff = frame_center - box_center
             horizontal_ratio = diff[0] / img_shape[1]
             vertical_ratio = diff[1] / img_shape[0]
-            logger.info(f"Horizontal ratio: {horizontal_ratio}, Vertical ratio: {vertical_ratio}")
-            if 0.05 < abs(horizontal_ratio) <= stop_threshold:
-                logger.info(f'Head Roated for forward: {str(vertical_ratio * 0.2)}, left: {str(horizontal_ratio * 0.2)}')
-                self.rotate_head(forward=vertical_ratio * 0.4, left=horizontal_ratio * 0.2)
-                print(f'Head Roated for forward: {str(vertical_ratio * 0.2)}, left: {str(horizontal_ratio * 0.2)}')
+            #logger.info(f"Calculated Horizontal ratio: {horizontal_ratio}, Vertical ratio: {vertical_ratio}")
+            if abs(horizontal_ratio) <= stop_threshold and abs(vertical_ratio) <= vertical_offset:
+                logger.info(f'Head Roated for forward: {str(vertical_ratio * 0.6)}, left: {str(horizontal_ratio * 0.6)}')
+                self.rotate_head(forward=-vertical_ratio * 0.4,left=horizontal_ratio * 0.6)
             else:
                 logger.info(f'Head Not Roated for forward: {str(vertical_ratio)}, left: {str(horizontal_ratio)}')
             
@@ -292,6 +332,9 @@ class Client:
             raise error
     
     def set_eyes_blue(self):
+        if self.current_color == "blue": # Same color, we don't do anything
+            return
+        self.current_color = "blue"
         headers = {'content-type': "/led/eyes/blue"}
         response = requests.post(self.address + headers["content-type"])
         if response.status_code == 200:
@@ -299,7 +342,21 @@ class Client:
         else:
             logger.error(f"Failed to set eyes to blue: {response.text}")
 
+    def set_eyes_green(self):
+        if self.current_color == "green":
+            return
+        self.current_color = "green"
+        headers = {'content-type': "/led/eyes/green"}
+        response = requests.post(self.address + headers["content-type"])
+        if response.status_code == 200:
+            logger.info("Eyes set to green")
+        else:
+            logger.error(f"Failed to set eyes to blue: {response.text}")
+
     def set_eyes_red(self):
+        if self.current_color == "red":
+            return
+        self.current_color = "red"
         headers = {'content-type': "/led/eyes/red"}
         response = requests.post(self.address + headers["content-type"])
         if response.status_code == 200:
@@ -314,3 +371,10 @@ class Client:
             logger.info("Eyes turned off")
         else:
             logger.error(f"Failed to turn off eyes: {response.text}")
+    
+    def rotate_head_abs(self, forward=0, left=0, speed=0.2, verbose=False):
+        headers = {'content-type': "/locomotion/rotateHeadAbs"}
+        response = requests.post(self.address + headers[
+            "content-type"] + f"?forward={str(forward)}&left={str(left)}&speed={str(speed)}")
+        # if verbose ^ self.verbose:
+        #     print(f"rotate_head_abs(forward={str(forward)}, left={str(left)}, speed={str(speed)})")
