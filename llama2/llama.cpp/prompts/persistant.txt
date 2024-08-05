@@ -1,2 +1,0 @@
-User: Hello, Bob.
-Bob: Hello. How may I help you today?
