@@ -11,6 +11,11 @@ The vision module is powered by [**InsightFace**](https://github.com/deepinsight
 
 We use Whisper Module to do the audio transcription. But this module in this reposuitory have some redundent part, because I tried to use the Diarization version at first, but the current work only do for one person. You can directly and simply use the [**Whisper**](https://github.com/openai/whisper) API if you only have one person speaking. 
 
+## LLM Module
+**Related File** `./llmControl.py`
+
+This file is utilizing the OpenAI API to call the server that we created by the LLM. Meanwhile, this file will create the profile for new users or some precess for the previous users. Furthermore, it will store the all profile and realted information after the main preocess finished to keep the memory for each person.
+
 ## Communication Behavior
 **Related File** `./client3.py`
 

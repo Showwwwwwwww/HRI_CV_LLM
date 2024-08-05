@@ -68,7 +68,7 @@ pip install -r requirements.txt
 conda create --name server python=2.7
 pip install -r ./server/requirements.txt
 ```
-Export the naoqi Package
+Export the naoqi Package is neccssary
 
 ```
 export PYTHONPATH=${PYTHONPATH}:{Your path to this package}/pynaoqi-python2.7-2.5.5.5-linux64/lib/python2.7/site-packages
@@ -95,11 +95,17 @@ For the llama model, please download the model by the instruction from Meta [Lla
 **Notice: You have to Call the server before the Client**
 ### Server
 ```
+conda activate server
+```
+```
 cd server
 python server.py
 ```
 
 ### Client 
+```
+conda activate module
+```
 ```
 cd client
 python experiment.py
@@ -107,6 +113,10 @@ python experiment.py
 
 ### Llama
 ```
+conda activate llama
+```
+```
+cd llama2/llama.cpp
 CUDA_VISIBLE_DEVICES=0,1,2 ./llama-server \
     -m ./models/70B/Meta-Llama-3.1-70B-Instruct-Q3_K_M.gguf \
     --host "127.0.0.2" \
