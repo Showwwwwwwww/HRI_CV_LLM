@@ -74,10 +74,11 @@ class Client:
                 interactPerson = self.interact_person 
                 #print(f'Interacted person is {interactPerson}')
             sound = self.get_sound()
+            print(f'sound:{sound}')
             if interactPerson:
                 if interactPerson == self.llm.last_person: # Person was in the frame, just speaking
                     self.set_eyes_green()
-                    if sound > 300:
+                    if sound > 900:
                         round_info["Detected person"] = interactPerson
                         break
                 else:
@@ -85,11 +86,12 @@ class Client:
                     self.set_eyes_red() # Think
                     initalize_conversation = self.llm.initialize_llm_talk(person=interactPerson, age=self.person_age,
                                                                         gender=self.person_sex)
-                    self.set_eyes_green()
+
                     self.say(initalize_conversation)
-            # else:
-            #     #self.set_eyes_green() # Original color
-            #     self.set_eyes_blue() # No one in the frame
+                    self.set_eyes_green()
+            else:
+                #self.set_eyes_green() # Original color
+                self.set_eyes_blue() # No one in the frame
         # initalize_conversation = self.llm.initialize_llm_talk(person =interactPerson, age = self.person_age, gender = self.person_sex)
         # if initalize_conversation:
         #     self.say(initalize_conversation)
@@ -124,7 +126,7 @@ class Client:
         x = 0
         while not self.stop_event.is_set():
             frame = self.get_image(save=True, path="./output", save_name="Pepper_Image", show=True)
-            detectedPerson, track_id, face_box = self.face_recognition.process_frame(frame, show=False) # Person, ID, bounding box frame
+            detectedPerson, track_id = self.face_recognition.process_frame(frame, show=False) # Person, ID
             if detectedPerson and  x > 5: # Person detected do each 5 frame
                 logger.info(f'detected person: {detectedPerson}, with center target')
                 box = self.face_recognition.extractBox(frame)
@@ -134,15 +136,16 @@ class Client:
             flag = False
             tic = time.time()
             match = self.face_recognition.person_matching(detectedPerson, track_id) # Person match with the last target person or not
-            #print(f"Time taken for matching: {time.time() - tic}")
+            print(match)
+            print(f"Time taken for matching: {time.time() - tic}")
             if match: # Person name match
+                logger.info(f'Target ID: {self.face_recognition.target_id }, Target Person: {self.face_recognition.target_name} in the frame')
                 continue
-            else: # Find the mismatch, we do two more comparsion 
-                #flag = True
+            else: # Find the mismatch, we do two more comparsion
                 check_id = track_id
                 for _ in range(2):
                     frame = self.get_image(save=True, path="./output", save_name="Pepper_Image")
-                    check_person, check_id, _ = self.face_recognition.process_frame(frame, show=False)
+                    check_person, check_id = self.face_recognition.process_frame(frame, show=False)
                     if check_person == detectedPerson:
                         flag = True
                     else:
@@ -151,30 +154,36 @@ class Client:
                         break
                 if flag: # Update the information for the target person
                     track_id = check_id # Update ID
-                    if self.face_recognition.mismatch_name:
-                        self.face_recognition.save_cropped_image()
-                    #with self.lock:
+                    # if self.face_recognition.mismatch_name: # if the updated person is mismatch? 
+                    #     self.face_recognition.save_cropped_image()
                     self.face_recognition.target_id = track_id
                     self.face_recognition.target_name = check_person
+                    self.face_recognition.save_cropped_image(self.face_recognition.target_name)
+
                     logger.info(f'Target ID: {self.face_recognition.target_id } changed to Target {track_id} due to three time matching')
                     logger.info(
                         f'Target name: {self.face_recognition.target_name} changed to Target {check_person} due to three time matching')
-                    #self.face_recognition.set_target_id(track_id)
-                    #self.face_recognition.set_target_name(check_person)
+
             with self.lock:
                 if flag: # Update the interaction_person and the relates info
                     logger.info(f' Interact_person is  changed from :{self.interact_person} to  {self.face_recognition.target_name}')
                     logger.info(f' Interact_person estimated age is {self.face_recognition.mismatch_age}')
                     logger.info(f' Interact_person estimated gender is {self.face_recognition.mismatch_sex}')
                     self.interact_person = self.face_recognition.target_name
-                    self.person_age = self.face_recognition.mismatch_age
-                    self.person_sex = self.face_recognition.mismatch_sex
+                    if self.face_recognition.target_name in self.face_recognition.gallery.keys():
+                        print(self.face_recognition.gallery[self.face_recognition.target_name].keys())
+                        self.person_age = self.face_recognition.gallery[self.face_recognition.target_name]["age"]
+                        self.person_sex = self.face_recognition.gallery[self.face_recognition.target_name]["sex"]
+                    else:
+                        self.person_age = self.face_recognition.mismatch_age
+                        self.person_sex = self.face_recognition.mismatch_sex
 
             if self.face_recognition.target_name is None: # No person in the frame, so we rotate it to the abs position
-                logger.info(f'No Person in the frame and we need to change the location for it')
+                logger.info(f'No Person in the frame')
                 #self.set_eyes_green() #
-                #self.rotate_head_abs()
+                self.rotate_head_abs()
             #time.sleep(1)
+
     def clear_audio_files(self):
         path = './../server/recordings'
         for filename in os.listdir(path):
@@ -210,7 +219,7 @@ class Client:
             vertical_ratio = diff[1] / img_shape[0]
             #logger.info(f"Calculated Horizontal ratio: {horizontal_ratio}, Vertical ratio: {vertical_ratio}")
             if abs(horizontal_ratio) <= stop_threshold and abs(vertical_ratio) <= vertical_offset:
-                logger.info(f'Head Roated for forward: {str(vertical_ratio * 0.6)}, left: {str(horizontal_ratio * 0.6)}')
+                #logger.info(f'Head Roated for forward: {str(vertical_ratio * 0.6)}, left: {str(horizontal_ratio * 0.6)}')
                 self.rotate_head(forward=-vertical_ratio * 0.4,left=horizontal_ratio * 0.6)
             else:
                 logger.info(f'Head Not Roated for forward: {str(vertical_ratio)}, left: {str(horizontal_ratio)}')

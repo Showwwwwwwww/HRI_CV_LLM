@@ -18,6 +18,7 @@ from voice import SpeechManager
 #from audio import AudioManager
 from audio2 import AudioManager2
 from head import HeadManager
+from light import EyeLEDManager
 # Tempfile to save the audio file
 import tempfile
 import soundfile as sf
@@ -54,7 +55,8 @@ print("Subscribing to live service...")
 life_service = session.service("ALAutonomousLife")
 # Controls the robot's cameras
 print("Subscribing to camera service...")
-camera_manager = CameraManager(session, resolution=0, colorspace=11, fps=30)
+# camera_manager = CameraManager(session, resolution=0, colorspace=11, fps=30)
+camera_manager = CameraManager(session, resolution=5, colorspace=11, fps=30)
 # Controls the robot's speech
 print("Subscribing to speech service...")
 speech_manager = SpeechManager(session)
@@ -65,6 +67,9 @@ print("Subscribing to audio service...")
 audio_manager = AudioManager2(session)
 session.registerService("AudioManager2", audio_manager)
 
+print("Subscribing to eye LED service...")
+eye_led_manager = EyeLEDManager(session)
+
 print("Subscribing to head service...")
 head_manager = HeadManager(session)
 
@@ -73,6 +78,24 @@ life_service.setAutonomousAbilityEnabled("All", False)
 
 # Start Flask server
 app = Flask(__name__)
+
+@app.route("/led/eyes/blue", methods=["POST"])
+def set_eyes_blue():
+    eye_led_manager.set_eyes_blue()
+    return jsonify({
+        "msg": "Eyes set to blue"})
+
+@app.route("/led/eyes/red", methods=["POST"])
+def set_eyes_red():
+    eye_led_manager.set_eyes_red()
+    return jsonify({
+        "msg": "Eyes set to red"})
+
+@app.route("/led/eyes/green", methods=["POST"])
+def set_eyes_green():
+    eye_led_manager.set_eyes_green()
+    return jsonify({
+        "msg": "Eyes set to green"})
 
 audio_count = 0
 @app.route("/audio/recording", methods=["GET"])
@@ -178,6 +201,7 @@ def pepper_to_server_fps():
         "frames":str(frames)
     })
     print "It took " + str(end) + " seconds to send " + str(frames) + " frames at " + str(frames/end) + "FPS."
+
 
 
 if __name__ == '__main__':

@@ -1,25 +1,26 @@
-from client2 import *
+from client3 import *
+import  time
 
-def communicateFlow(device=0):
-    c = Client(device = device)
-    c.communicate_behavior()
-    c.shutdown()
-
-def communicateFlow_thread(device=1):
-    c = Client(device = device)
+def communicateFlow_thread(device=2):
+    c = Client()
     print("Client initizalized")
     c.communicate_behavior3()
     c.shutdown()
 
 def head_tracking():
-    c = Client(device = 1)
+    c = Client()
     count = 0
-    while count < 100:
-        img = c.get_image(save=True,path="./output",save_name="Pepper_Image")
+    while True:
+        print(f'count {count}')
+        frame = c.get_image(save=True,path="./output",save_name="Pepper_Image",show=True)
         # print(f'image{count}')
         #cv2.imshow("Pepper_Image", img)
         #cv2.waitKey(1)
-        c.process_image(image=img)
+        # detecedPerson, track_id, face = c.face_recognition.process_frame(frame,
+        #                                                                     show=False)  # Return the detected person
+        box =  c.face_recognition.extractBox(frame)
+        detecedPerson = 'SOme One '
+        c.center_target2(detecedPerson,box, frame.shape)
         count+=1
     c.shutdown()
 
@@ -62,6 +63,26 @@ def testImagesSpeed():
     print(f"Captured {num_frames} frames in {elapsed_time:.2f} seconds. Images per second: {fps:.2f}")
 
     c.shutdown()
+def checkSound():
+    c = Client()
+    x = 1
+    while x < 100:
+        sound = c.get_sound()
+        print(sound)
+        time.sleep(0.5)
+        x+=1
+    #c.rotate_head(forward=-0.7, left=0.7)
+    time.sleep(5)
+    # c.rotate_head(
+    # time.sleep(5)
+    c.shutdown()
+def rotatHead():
 
+    c = Client()
+    c.rotate_head(forward=-0.7,left=0.7)
+    time.sleep(5)
+    # c.rotate_head(
+    # time.sleep(5)
+    c.shutdown()
 if __name__ == '__main__':
     communicateFlow_thread()

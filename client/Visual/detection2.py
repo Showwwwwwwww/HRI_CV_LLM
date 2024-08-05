@@ -54,6 +54,8 @@ class FaceRecognition2:
         self.mismatch_name = None
         self.mismatch_age = None  # This is the group rather than a specific age
         self.mismatch_sex = None
+        self.mismatch_crop = None 
+        self.crop_name = None
         self.crop_frame = None # For store the crop information for the person
 
     # loading the face in db with feature
@@ -67,13 +69,13 @@ class FaceRecognition2:
             os.makedirs(face_db_path)
         for root, dirs, files in os.walk(face_db_path):
             for file in files:
+                print(f'root: {root }file: {file}')
                 input_image = cv2.imdecode(np.fromfile(os.path.join(root, file), dtype=np.uint8), 1)
                 # username is the file name
                 user_info = os.path.splitext(file)[0].split("_")
                 user_name = user_info[0]
                 age = None
                 sex = None
-                group = None
                 if len(user_info) == 3:
                     age = user_info[1]
                     sex = user_info[2] # M or F
@@ -83,26 +85,41 @@ class FaceRecognition2:
                 
                 self.gallery[user_name] = {
                             "feature": embedding,  # Store the numpy feature
-                            "sex": sex,
-                            "age": age
+                            "sex": sex if sex else face.sex,
+                            "age": age if age else face.age,
+                            "crop": 'None'
                         }
                 print(f"Load {user_name} into gallery")
                
                     
 
-    def save_cropped_image(self):
+    def save_cropped_image(self,name = None):
         # Update crop, mismatch, and mismatch_name
-        save_path = os.path.join(self.face_db, f'{self.mismatch_name}.jpg')
-        self.gallery[self.mismatch_name] = {
-                            "feature": self.mismatch_feature,  # Store the numpy feature
-                            # "sex": sex,
-                            # "age": age
-                        }
-        self.mismatch_feature = np.empty((0, 512))
-        self.mismatch_name = None
-        # Save the cropped image
-        cv2.imwrite(save_path, self.crop_frame)
+        save_path = os.path.join(self.face_db, f'{name}.jpg')
         
+        if name and name == self.mismatch_name:
+            self.gallery[self.mismatch_name] = {
+                                "feature": self.mismatch_feature,  # Store the numpy feature
+                                "sex": self.mismatch_sex,
+                                "age": self.mismatch_age,
+                                "crop": self.mismatch_crop
+                            }
+            self.mismatch_feature = np.empty((0, 512))
+            self.mismatch_name = None
+            self.mismatch_sex = None
+            self.mismatch_age = None
+            self.mismatch_crop = None
+        # Save the cropped image
+        #cv2.imwrite(save_path, self.crop_frame)
+        print(f'name: {name} crop_name: {self.crop_name}')
+        if name == self.crop_name and self.crop_frame is not None and name is not None:
+            cv2.imwrite(save_path, self.crop_frame)
+        # crop = self.gallery[name]["crop"]
+        # if crop != 'None':
+        #     cv2.imwrite(save_path, crop)
+        #     print(self.gallery.keys())
+        #     print(name)
+        #     self.gallery[name]["crop"] = 'None'
         return save_path
             
     def set_target_id(self, target_id):
@@ -128,19 +145,12 @@ class FaceRecognition2:
             return False
         
     def match_new_person(self,face, threshold=0.2):
-        # new_features = F.normalize(face.embedding).unsqueeze(0).numpy()
         new_features = F.normalize(torch.from_numpy(face.embedding).unsqueeze(0),dim=1).cuda()
         # Get the embedding for this face/person
-
-        print(f'new_features: {new_features.size}')
         gallery_names = list(self.gallery.keys())
-        # gallery_features = np.array([self.gallery[name]["feature"].flatten() for name in gallery_names])
         gallery_features = torch.cat([self.gallery[name]["feature"] for name in gallery_names], dim=0).cuda()
 
         if self.mismatch_feature.shape[0] > 0: # Have Mismatch,
-            # print('gallery_features:',gallery_features.shape)
-            # print('mismatch_feature:',self.mismatch_feature.shape)
-            # gallery_features = np.append(gallery_features, self.mismatch_feature, axis=0)
             gallery_features = torch.cat([gallery_features, self.mismatch_feature], dim=0).cuda()
             gallery_names.append(self.mismatch_name)
 
@@ -168,29 +178,23 @@ class FaceRecognition2:
         if max_similarity > threshold: 
             # Update the matched person's embedding with the new embedding
             matched_name = gallery_names[matched_index]
-            if matched_name == self.mismatch_name:
+            if matched_name == self.mismatch_name and face['det_score'] > 0.3:
                 self.mismatch_feature = new_features
-            else:
-                #self.mismatch_feature =  np.empty((0, 512))
+            else: 
+                if face['det_score'] > 0.4:
+                    self.gallery[matched_name]["feature"] = new_features
                 self.mismatch_feature = torch.empty((0, 512)).cuda()
                 self.mismatch_name = None
             return matched_name
         else:
-            if not self.mismatch_name: # No mismatch person, and we found one
+            if not self.mismatch_name and face['det_score'] > 0.2: # No mismatch person, and we found one
                 self.mismatch_name = 'UnknownPerson' + str(len(self.gallery))
                 self.mismatch_feature = new_features
                 self.mismatch_age = face.age
                 self.mismatch_sex = face.sex
             else: # Already have a mismatch person but not match
-                #self.mismatch_feature = np.empty((0, 512))
                 self.mismatch_feature = torch.empty((0, 512)).cuda()
                 self.mismatch_name = None
-            # self.gallery[people_name] = {
-            #      "feature": new_features,  # Store the numpy feature for new person 
-            #     "sex": face.sex,
-            #     "age": face.age
-            # }
-            # Save the image for the new person in the database 
             return None # When it is None, we identify it is as New Person Coming, And we need to add it to Gallery
         
     def process_frame(self,frame,show = False, new_person = False):
@@ -211,37 +215,33 @@ class FaceRecognition2:
             if result.boxes.id is None: 
                 continue
             ids = result.boxes.id.cpu().numpy()
+            if self.target_id in ids: # People still in the frame 
+                return self.get_target_name(), self.get_target_id()
             # Find all person, fin the box 
             for box, track_id in zip(boxes,ids):  # Find each person in the frame, Assume only one person in the frame 
                 if int(box.cls) == 0 and box.conf > 0.7 or track_id == self.get_target_id():
                     r = box.xyxy[0].astype(int) 
                     self.crop_frame = crop = frame[r[1]:r[3], r[0]:r[2]] # Person Crop based on it boudning box 
                     face_info = self.model.get(crop) # Information for ananlysis this face. have only one 
-                    if len(face_info) >= 1:
-                        face = face_info[0] # Have person face
+                    if len(face_info) >= 1:# Have person face
+                        face = face_info[0] 
                         #print(face['det_score'] )
-                        if face['det_score'] < 0.5 and track_id != self.target_id: # Person face is clear
+                        if face['det_score'] < 0.3: # Person face is not clear
                             continue
                     else: # No person face or face is not clear
                         continue
-                    if self.target_id in ids: # People still in the frame 
-                        if track_id == self.target_id: # Person Before
-                            return self.get_target_name(), self.get_target_id(), r
-                        # return None,None,face  --> If the face is not None, we just return it
-                    else: # People not in the frame
-                        print(f' target id : {self.target_id} not in the frame ids: {ids}')
-                        storedPerson = self.match_new_person(face,threshold=0.3) # Match the person and  Save the image
-                        #self.set_target(track_id) # Set the target id
-                        return storedPerson, track_id,r
-                    # if self.target_id in ids: # If the target ID in the frame, we find the face and update it
-                    #     if track_id == self.target_id: # Person Before
-                    #         return self.target_name, self.target_id, face
-                    #         # return None,None,face  --> If the face is not None, we just return it
-                    # else:
-                    #     storedPerson = self.match_new_person(face,threshold=0.5) # Match the person and  Save the image
-                    #     #self.set_target(track_id) # Set the target id
-                    #     return storedPerson, track_id,face
-        return None,None,None
+                    print(f' target id : {self.target_id} not in the frame ids: {ids}')
+                    storedPerson = self.match_new_person(face,threshold=0.3) # Match the person and  Save the image
+                    if face['det_score'] > 0.7:
+                        if storedPerson in self.gallery.keys():
+                            self.gallery[storedPerson]["crop"] = crop
+
+                        else:
+                            self.mismatch_crop = crop
+                        self.crop_frame = crop
+                        self.crop_name = storedPerson
+                    return storedPerson, track_id
+        return None,None
 
     def extractBox(self,frame):
         face_info = self.model.get(frame)

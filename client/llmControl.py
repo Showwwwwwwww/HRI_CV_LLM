@@ -54,6 +54,14 @@ class llm:
             return None
         print(f'self.last_person: {self.last_person}, person: {person}')
         self.last_person = person  # new Person or back to the conversation
+        if gender is None:
+            gender = 'unknown'
+        else:
+            if age > 20:
+                gender = 'Male' if gender == 'M' else 'Female'
+            else:
+                gender = 'Boy' if gender == 'M' else 'Girl'
+
         if  age is None:
             age = 'unknown'
         elif age < 13:
@@ -65,35 +73,47 @@ class llm:
         elif age >= 60:
             age = 'senior'
 
-        if gender is None:
-            gender = 'unknown'
-        else:
-            gender = 'Male' if gender == 'M' else 'Female'
-
         if person not in self.conversations.keys():
-            self.conversations[person] = [
-                {"role": "system",
-                  "content":
-                    f"Chinny, as a friendly and efficient robot, your primary role is to engage in polite and engaging conversations."
-                    f" When you meet someone for the first time, use the age group, gender, and available gene data to craft a personalized greeting." 
-                    f"If the person's name is known, greet them warmly by name. If unknown, introduce yourself as Ginny, "
-                    f"compliment them based on their age group and gender in a respectful manner, and kindly ask for their name. "
-                    f"Your responses should be natural, friendly, and no more than 35 words, "
-                    f"reflecting the information provided during the interaction without making assumptions or faking details."
-                    f"This person looks like {age} and {gender}, you need to correct with this person."
-                    f"This is the example: if you don’t recognise the person, say something as complement considering its gender and age group together to start your conversation, eg I can see a cute small girl, correct? Or it seems a handsome young male in front of me, am I right. "
-                    f"Then introduce yourself ask her/his name eg “My name is Ginny. What is your name?"
-                    f"Your response do not same for this one but need to follow this structure. "
-                    },
-            ]
+            if 'Person' in person: # Person is unknown
+                self.conversations[person] = [
+                    {"role": "system",
+                    "content":
+                        f"Ginny, as a friendly and efficient social robot, your primary role is to engage in polite and engaging conversations."
+                        f"When you meet someone for the first time, use the age group, gender, and available gene data to craft a personalized greeting." 
+                        f"compliment them based on their age group and gender in a respectful manner, and kindly introduce yourself and ask for their name. "
+                        f"This person looks like a {age} and {gender}, you need to correct with this person."
+                        f"This is the example: Say something as complement considering its gender and age group together to start your conversation, eg I can see a cute small girl, correct? Or it seems a handsome young male in front of me, am I right. "
+                        f"Then introduce yourself ask her/his name eg “My name is Ginny. What is your name?"
+                        f"Notice you cannot use male or female or woman or adult in your response, this is rude to communicate with people with it"
+                        f"Your response should not same sa the example, just use this as a reference and follow this structure "
+                        f"reflecting the information provided during the interaction without making assumptions or faking details."
+                        f"Your responses should be natural, friendly, and no more than 35 words. "
+                        },
+                ]
+            else:
+                self.conversations[person] = [
+                    {"role": "system",
+                    "content":
+                        f"Ginny, as a friendly and efficient social robot, your primary role is to engage in polite and engaging conversations."
+                        f"When you meet someone for the first time, use the age group, gender, and available gene data to craft a personalized greeting." 
+                        f"This person name is {person}, and this person is {age} and {gender}."
+                        f"you need to introduce yourself and kindly start the conversation with this person"
+                        f"You want to know more about {person}, and use these information to optimized the conversation"
+                        f"Your response can be dynamic but need to follow this structure. "
+                        f"reflecting the information provided during the interaction without making assumptions or faking details."
+                        f"Your responses should be natural, friendly, and no more than 35 words. "
+                        f"Your all response do not have to use question as finish."
+                        f"Ask question if necessary, otherwise use more natural communication flow."
+                        },
+                ]
             print(f'Person {person} initialized')
         else:
             info = {}
             info['role'] = 'system'
             info['content'] = (
-                f"{person} has returned to the conversation. Please continue your role as {person}'s friend and continue the conversation. "
-                f"You need to welcome {person} back to the conversation and use a sentence of less than 30 words to resume the conversation based on the conversation history. "
-                f"Ensure the {person} feels comfortable and the conversation flows naturally."
+                f"This person has returned to the conversation. Please continue your role as this person's friend and continue the conversation. "
+                f"You need to welcome this person back to the conversation with this person's name and use a sentence of less than 30 words to resume the conversation based on the conversation history. "
+                f"Ensure this person feel comfortable and the conversation flows naturally."
             )
             self.conversations[person].append(info)
 
@@ -166,9 +186,8 @@ class llm:
             'role': 'assistant',
             'content': response
         })
-        #print(f'This is the conversation history for {person}, {self.conversations[person]}')
-        #print(response)
         return response
+    
     def process_response(self, response):
         #print(f'The response before process is: {response}')
         pattern = r'^USER:\s*(.*?)s$'
@@ -215,9 +234,9 @@ if __name__ == '__main__':
     agent.last_person = 'None'
     x = 0 
     while x < 7:
-        agent.initialize_llm_talk('UnknownPerson18',17,'M')
+        agent.initialize_llm_talk('unknownperson',13,'F')
         user_response = input()
-        response = agent.talkTollm('UnknownPerson18',user_response)
+        response = agent.talkTollm('unknownperson',user_response)
         #print(response)
         x  += 1
     #agent.save_conversations()

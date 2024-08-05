@@ -69,8 +69,9 @@ if __name__ == "__main__":
                                                                                              "Please check your script arguments. Run with -h option for help.")
         sys.exit(1)
 
-    manager = CameraManager(session, resolution=1, colorspace=11, fps=30)
-    
+    # manager = CameraManager(session, resolution=1, colorspace=11, fps=30)
+    manager = CameraManager(session, resolution=5, colorspace=11, fps=30)
+
     start = time.time()
     frames = 60
     for _ in range(frames):
