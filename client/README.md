@@ -1,22 +1,24 @@
 # Client Module
-This module consist the code for the function for face recognition, ASR and the main behavior function. 
+This module contains the code for face recognition, ASR (Automatic Speech Recognition), and the main behavior functions.
 
 ## Visual Module Inrtoduction
-**Relate File** `./Visual/detection2.py`
+**Related File** `./Visual/detection2.py`
 
-The vision module is powered by [**InsightFace**](https://github.com/deepinsight/insightface) and [**Yolov8**](https://github.com/ultralytics/ultralytics). We use inisghtFace to extract the face embedding from user face on the image, and do the compraision with the face_embedding in the gallary to complete the face recognition. Meanwhile, we use Yolo with the ID to represent that the person still in the scene and have not leave. By conbining these techniques. We complete the ReID also. 
+The vision module leverages [**InsightFace**](https://github.com/deepinsight/insightface) and [**Yolov8**](https://github.com/ultralytics/ultralytics) technologies.  InsightFace is used to extract face embeddings from user images, which are then compared with embeddings in the gallery to perform face recognition. Concurrently, Yolo tracks IDs to monitor whether individuals remain within the scene. By combining these techniques, we also achieve reliable Re-Identification (ReID).
 
 ## ASR Module 
-**Relate File** `./Whisper_speaker_diarization/whisper.py`
+**Related File** `./Whisper_speaker_diarization/whisper.py`
 
-We use Whisper Module to do the audio transcription. But this module in this reposuitory have some redundent part, because I tried to use the Diarization version at first, but the current work only do for one person. You can directly and simply use the [**Whisper**](https://github.com/openai/whisper) API if you only have one person speaking. 
+The ASR module utilizes the Whisper model for audio transcription. Initially, this repository included a diarization version intended for multiple speakers, but the current implementation is simplified for single-speaker scenariosIf your use case involves only one speaker, you might prefer using the direct [**Whisper**](https://github.com/openai/whisper) API for simplicity.
 
 ## LLM Module
 **Related File** `./llmControl.py`
 
-This file is utilizing the OpenAI API to call the server that we created by the LLM. Meanwhile, this file will create the profile for new users or some precess for the previous users. Furthermore, it will store the all profile and realted information after the main preocess finished to keep the memory for each person.
+This script uses the OpenAI API to interact with our server managed by the LLM. It is responsible for creating and updating user profiles and processing data for returning users. After completing the main processes, it stores all profiles and related information to maintain a memory record for each individual.
+
+
 
 ## Communication Behavior
 **Related File** `./client3.py`
 
-This file contain the all function that receive and send information by Flask to server. Meanwhile, it coantin the main class for **Client** with all functions. In the main communicate_behavior function, we call the vision and otehr function seperatelym the vision module is running on a single thread, which made the recognition and tracking can keep running when we running the other sections. 
+This file includes all functions necessary for sending and receiving information via Flask to the server. It contains the main class for the **Client**, encompassing all functions. The main **ommunicate_behavior function** operates the vision module on a separate thread, allowing face recognition and tracking to continue seamlessly alongside other tasks.

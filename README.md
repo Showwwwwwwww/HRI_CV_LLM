@@ -1,5 +1,7 @@
 # Human Robot Interaction using Computer Vision and Large Language Models
-This project construct a communication architecture whihch made Pepper robot can recognize user, memorizing user and communicating user. Which involving the module of tracking, face recognition, ASR and LLM. 
+This project develops a communication architecture enabling the Pepper robot to recognize users, remember them, and engage in meaningful interactions. It integrates various modules including tracking, face recognition, ASR (Automatic Speech Recognition), and LLM (Large Language Model).
+
+
 
 
 ## Table of Content 
@@ -9,17 +11,18 @@ This project construct a communication architecture whihch made Pepper robot can
 
 
 ## Framework
-The framework required 3 modules to running:
-1. Client 
-2. Server
-3. Llama
+This project utilizes a three-module architecture:
+1. Client: Handles data processing and sends information to the server.
+2. Server: Acts primarily as a communication relay between the client and Llama.
+3. Llama: Processes requests and sends responses back to the robot.
 
-In this project, we treat the robot will only send the receive information as server, these information will be send to the client for processing, meanwhile, the client will send the information to llama to get the response to robot to make it communicate with user. The information exchange between Client and Server depends on Flask Server. Besides, the Llama will launch another server which made us more easily communciate with it. 
+Information exchange between the Client and Server is facilitated by a Flask server. Additionally, Llama operates its own server to simplify communications.
 
 ## Environment
 ### Client
-#### Testing Cuda & Python Version
-CUDA=11.8 Python=3.11.8
+#### Our Cuda & Python Version
+- CUDA=11.8 
+- Python=3.11.8
 
 #### Install requirements file
 ```angular2html
@@ -92,7 +95,7 @@ Then build the folder depeonds on your PC, please refer this file in [llama.cpp]
 For the llama model, please download the model by the instruction from Meta [Llama3](https://llama.meta.com/) official website and place then into `llama.cpp/models`
 
 ## Usage
-**Notice: You have to Call the server before the Client**
+**Important: Start the server and llama before the client.**
 ### Server
 ```
 conda activate server
@@ -100,15 +103,6 @@ conda activate server
 ```
 cd server
 python server.py
-```
-
-### Client 
-```
-conda activate module
-```
-```
-cd client
-python experiment.py
 ```
 
 ### Llama
@@ -124,4 +118,13 @@ CUDA_VISIBLE_DEVICES=0,1,2 ./llama-server \
     -c 4096 \
     -ngl 81 \
     --api-key "vl4ai"
+```
+
+### Client 
+```
+conda activate module
+```
+```
+cd client
+python experiment.py
 ```
