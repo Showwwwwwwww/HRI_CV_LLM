@@ -16,8 +16,8 @@ class AudioManager2(object):
         self.audio_service.enableEnergyComputation()
         # Audio recording setting
 
-        self.threshold = 200
-        self.silence_duration = 2
+        self.threshold = 1000
+        self.silence_duration = 1
         self.is_recording = False
         self.last_sound_time = None
         self.sample_rate = 16000
@@ -32,13 +32,19 @@ class AudioManager2(object):
         self.framesCount = 0
         self.nbOfFramesToProcess =30
         self.isRecording = False
-    
+        self.sound_list = [3000]
+
+
     def processRemote(self, nbOfChannels, nbOfSamplesByChannel, timeStamp, inputBuffer):
         """
         Record the audio data from the front microphone depend on the sound threshold
         """
 
         front_energy = self.getSound()
+        self.sound_list.append(front_energy)
+        if len(self.sound_list) > 200:
+            self.sound_list.pop(0)
+        #self.threshold =  (np.sum(self.sound_list)/ len(self.sound_list))*1.2
         print("Front energy: ", front_energy)
 
         print("Statues before: ", self.isRecording)
